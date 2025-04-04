@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kid's Virtual Money Tracker</title>
+  <title>Khan Kids Money</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -83,8 +83,7 @@
   </style>
 </head>
 <body>
-  <h1>Virtual Money Tracker</h1>
-
+  <h1>Khan Kids Money</h1>
   <div class="container child">
     <img src="shahzeb.jpg" alt="Shahzeb">
     <div class="name">Shahzeb</div>
@@ -132,12 +131,17 @@
       <button class="subtract" onclick="updateMoney('Shahroz', -0.25)">- 25¢</button>
     </div>
   </div>
-
   <canvas class="confetti" id="confetti"></canvas>
   <audio id="cashSound" src="money.mp3" preload="auto"></audio>
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbxmY8AMRmOTD8Dn8n0T32wiWfX6D3_dZ5Dc8NprRjjOMrUHGbbYJHaUkB3UoFUm_ttkGA/exec";
+
+    const milestones = {
+      Shahzeb: { '5': false, '20': false, '50': false, '100': false },
+      Mehreen: { '5': false, '20': false, '50': false, '100': false },
+      Shahroz: { '5': false, '20': false, '50': false, '100': false }
+    };
 
     async function fetchMoney() {
       const response = await fetch(API_URL);
@@ -153,6 +157,16 @@
         if (parseFloat(newValue) !== oldValue) {
           el.classList.add("animated");
           setTimeout(() => el.classList.remove("animated"), 500);
+
+          const milestonesToCheck = [5, 20, 50, 100];
+          milestonesToCheck.forEach(milestone => {
+            if (parseFloat(newValue) >= milestone && !milestones[name][milestone]) {
+              milestones[name][milestone] = true;
+              setTimeout(() => {
+                alert(`🎉 Congratulations, ${name}! You reached $${milestone}! 🎉`);
+              }, 300);
+            }
+          });
         }
       });
     }
