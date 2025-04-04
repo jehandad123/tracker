@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Khan Kids Money</title>
+  <title>Kid's Virtual Money Tracker</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -83,7 +83,7 @@
   </style>
 </head>
 <body>
-  <h1>Khan Kids Money</h1>
+  <h1>Virtual Money Tracker</h1>
 
   <div class="container child">
     <img src="shahzeb.jpg" alt="Shahzeb">
@@ -153,19 +153,6 @@
         if (parseFloat(newValue) !== oldValue) {
           el.classList.add("animated");
           setTimeout(() => el.classList.remove("animated"), 500);
-
-          const milestonesToCheck = [20, 50, 100];
-          milestonesToCheck.forEach(milestone => {
-            if (parseFloat(newValue) >= milestone && !milestones[name][milestone]) {
-              milestones[name][milestone] = true;
-              setTimeout(() => {
-                alert(`🎉 Congratulations, ${name}! You reached $${milestone}! 🎉`);
-              }, 300);
-            }
-          });
-        }! You reached $20! 🎉`);
-            }, 300);
-          }
         }
       });
     }
@@ -189,12 +176,6 @@
     }
 
     window.onload = fetchMoney;
-
-    const milestones = {
-      Shahzeb: { '20': false, '50': false, '100': false },
-      Mehreen: { '20': false, '50': false, '100': false },
-      Shahroz: { '20': false, '50': false, '100': false }
-    };
 
     function launchConfetti() {
       const canvas = document.getElementById('confetti');
@@ -251,3 +232,4 @@
   </script>
 </body>
 </html>
+
