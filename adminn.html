@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JD Assistant v3.2 (Bulletproof JSON Fix)</title>
+</head>
+<body>
+  <h1>🧠 JD Assistant v3.2 (Bulletproof JSON Fix)</h1>
+  <p>Paste your <strong>OpenAI API Key</strong> below:</p>
+  <input type="password" id="apiKey" placeholder="sk-..." style="width: 300px;" />
+  <button onclick="saveKey()">🔐 Save API Key</button>
+  <button id="recordButton">🎙️ Start Recording</button>
+  <p id="status"></p>
+  <h3>📝 Whisper Transcript</h3>
+  <pre id="transcript"></pre>
+  <h3>🧠 GPT Raw Output</h3>
+  <pre id="gptRaw"></pre>
+  <h3>📦 Parsed Task JSON</h3>
+  <pre id="structuredTask"></pre>
+
+  <script>
+    let mediaRecorder;
+    let audioChunks = [];
+
+    const recordButton = document.getElementById('recordButton');
+    const statusText = document.getElementById('status');
+    const transcriptDisplay = document.getElementById('transcript');
+    const gptRawDisplay = document.getElementById('gptRaw');
+    const structuredDisplay = document.getElementById('structuredTask');
+    const apiKeyInput = document.getElementById('apiKey');
+
+    window.onload = () => {
+      const storedKey = localStorage.getItem("openai_api_key");
+      if (storedKey) {
+        apiKeyInput.value = storedKey;
+      }
+    };
+
+    function saveKey() {
+      const key = apiKeyInput.value.trim();
+      if (key.startsWith("sk-")) {
+        localStorage.setItem("openai_api_key", key);
+        alert("API key saved.");
+      } else {
+        alert("Please enter a valid API key starting with 'sk-'");
+      }
+    }
+
+    async function sendToWhisper(audioBlob) {
+      const apiKey = apiKeyInput.value;
+      if (!apiKey) {
+        alert("Please enter your OpenAI API Key first.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", audioBlob, "audio.webm");
+      formData.append("model", "whisper-1");
+
+      statusText.textContent = "Transcribing...";
+
+      const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      const text = data.text || "No transcription found.";
+      transcriptDisplay.textContent = text;
+      statusText.textContent = "Parsing task...";
+
+      await sendToGPT(text, apiKey);
+    }
+
+    async function sendToGPT(text, apiKey) {
+      const gptPrompt = `
+Your job is to extract structured information from a voice assistant command.
+Return ONLY a valid JSON object with these fields:
+- name: just the English first name of the person assigned (e.g. Shahzeb)
+- note: short summary of what the task is (in English)
+- priority: High, Medium, or Low
+- tab: either "family" or "work"
+- status: default to "Open"
+- date: today's date in YYYY-MM-DD format
+
+ALWAYS respond in English. Do NOT return extra explanation or formatting. Return JSON only.
+
+Now process this: "${text}"
+`;
+
+      const gptResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: gptPrompt }],
+          temperature: 0.3
+        })
+      });
+
+      const gptData = await gptResponse.json();
+      const content = gptData.choices?.[0]?.message?.content || "GPT did not return anything.";
+      gptRawDisplay.textContent = content;
+
+      try {
+        const cleaned = content
+          .replace(/[\u2018\u2019\u201C\u201D]/g, '"')
+          .replace(/^[^\{]*({)/s, "$1")
+          .replace(/(})[^\}]*$/s, "$1")
+          .replace(/```json|```/g, "")
+          .replace(/[\u200B-\u200D\uFEFF]/g, "") // zero-width/invisible
+          .trim();
+
+        console.log("Cleaned GPT content:", cleaned);
+
+        const task = JSON.parse(cleaned);
+        structuredDisplay.textContent = JSON.stringify(task, null, 2);
+        await postToSheet(task);
+        statusText.textContent = "✅ Task added to Google Sheet!";
+      } catch (err) {
+        structuredDisplay.textContent = "❌ Could not parse GPT response as JSON.\n\n" + err.message;
+        statusText.textContent = "❌ Failed to parse GPT response. See raw output.";
+      }
+    }
+
+    async function postToSheet(task) {
+      await fetch("https://script.google.com/macros/s/AKfycbyr3tIWkLbuhWsGIhhJvw6HCP4coddoTuGVWphdnUml7jjYknqEiW6XzP-BYeqw8SjztA/exec", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(task)
+      });
+    }
+
+    recordButton.onclick = async () => {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        recordButton.textContent = "🎙️ Start Recording";
+        statusText.textContent = "Processing...";
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = event => {
+        if (event.data.size > 0) audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        await sendToWhisper(audioBlob);
+      };
+
+      mediaRecorder.start();
+      recordButton.textContent = "⏹️ Stop Recording";
+      statusText.textContent = "Recording...";
+    };
+  </script>
+</body>
+</html>
