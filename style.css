@@ -1,0 +1,42 @@
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+  background: #f9f9f9;
+}
+button {
+  padding: 15px 25px;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+#mic-btn.listening {
+  background-color: #dcedc8;
+}
+.section {
+  margin-bottom: 20px;
+  background: #ffffff;
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+.task {
+  margin-top: 5px;
+  padding: 5px;
+  background: #e0f7fa;
+  display: flex;
+  justify-content: space-between;
+}
+.task input {
+  width: 70%;
+}
+.task button {
+  margin-left: 5px;
+}
+.completed {
+  text-decoration: line-through;
+  background: #c8e6c9;
+}
+.transcript {
+  font-style: italic;
+  color: #333;
+  margin-bottom: 20px;
+}
