@@ -1,0 +1,22 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JD's Voice Task Manager</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <h1>JD's Voice Task Manager</h1>
+  <button onclick="startListening()">Start Speaking</button>
+  <div id="sections">
+    <div class="section" id="this-week"><h2>This Week</h2><div class="task-list"></div></div>
+    <div class="section" id="next-week"><h2>Next Week</h2><div class="task-list"></div></div>
+    <div class="section" id="week-after-next"><h2>Week After Next</h2><div class="task-list"></div></div>
+  </div>
+  <h2>Completed</h2>
+  <div id="completed" class="task-list"></div>
+  <script src="script.js"></script>
+</body>
+</html>
