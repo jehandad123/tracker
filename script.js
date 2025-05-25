@@ -73,25 +73,6 @@ function handleVoiceCommand(transcript) {
   }
 }
 
-  const categories = {
-    "this week": "this-week",
-    "next week": "next-week",
-    "week after next": "week-after-next"
-  };
-  const lowerTranscript = transcript.toLowerCase();
-
-  for (const phrase in categories) {
-    if (lowerTranscript.includes(phrase)) {
-      const trimmedTask = transcript
-        .replace(/add/i, "")
-        .replace(new RegExp("to " + phrase, "i"), "")
-        .trim();
-      addTask(categories[phrase], trimmedTask);
-      return;
-    }
-  }
-  alert("Couldn't understand. Try something like: Add 'Call AC guy' to this week.");
-}
 
 function addTask(sectionId, text, save = true) {
   const taskList = document.querySelector(`#${sectionId} .task-list`);
