@@ -1,4 +1,3 @@
-
 function startListening() {
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.lang = 'en-US';
@@ -227,3 +226,18 @@ function loadTasks() {
 }
 
 window.onload = loadTasks;
+
+
+function addManualTask() {
+  const input = document.getElementById("manual-task-input");
+  const category = document.getElementById("manual-category").value;
+  const task = input.value.trim();
+
+  if (!task) {
+    alert("Please enter a task.");
+    return;
+  }
+
+  addTask(category, task);
+  input.value = "";
+}
