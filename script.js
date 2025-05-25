@@ -39,27 +39,19 @@ function handleVoiceCommand(transcript) {
     "next week": "next-week",
     "week after next": "week-after-next"
   };
+  const lowerTranscript = transcript.toLowerCase();
 
   for (const phrase in categories) {
-    if (transcript.toLowerCase().includes(phrase)) {
-      const task = transcript.split("to " + phrase)[0].replace("add", "").trim();
-      if (task) {
-        addTask(categories[phrase], task);
-        return;
-      }
+    if (lowerTranscript.includes(phrase)) {
+      const trimmedTask = transcript
+        .replace(/add/i, "")
+        .replace(new RegExp("to " + phrase, "i"), "")
+        .trim();
+      addTask(categories[phrase], trimmedTask);
+      return;
     }
   }
-  alert("Couldn't understand. Try: Add 'Call AC guy' to this week.");
-}
-
-function addManualTask() {
-  const input = document.getElementById("manual-task-input");
-  const category = document.getElementById("manual-category").value;
-  const task = input.value.trim();
-  if (task) {
-    addTask(category, task);
-    input.value = "";
-  }
+  alert("Couldn't understand. Try something like: Add 'Call AC guy' to this week.");
 }
 
 function addTask(sectionId, text, save = true) {
