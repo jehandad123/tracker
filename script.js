@@ -135,7 +135,12 @@ function addTask(sectionId, text, save = true) {
   div.appendChild(buttons);
   taskList.appendChild(div);
 
-  if (save) saveTasks();
+  
+  if (save) {
+    saveTasks();
+    sendTaskToGoogleSheets(sectionId, text);
+  }
+
 }
 
 function moveTask(taskElement, direction) {
@@ -240,4 +245,19 @@ function addManualTask() {
 
   addTask(category, task);
   input.value = "";
+}
+
+
+async function sendTaskToGoogleSheets(category, task) {
+  try {
+    await fetch("https://script.google.com/macros/s/AKfycbzp_DNGFNQ8OU_Qa8Ce8Q6G5QEDiBQqRIRGqC0__lNiiQg9KJ8n8qf7wkto4sa3kbFM/exec", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ category, task })
+    });
+  } catch (err) {
+    console.error("Failed to sync with Google Sheets:", err);
+  }
 }
