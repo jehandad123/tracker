@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>JD Work Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.2">
+  <link rel="stylesheet" href="work_style.css">
+</head>
+<body>
+  <h1>JD Work Tracker</h1>
+  <button id="mic-btn" onclick="startListening()">🎤 Start Speaking</button>
+  <p id="live-transcript" class="transcript"></p>
+
+  <div id="manual-entry">
+    <input type="text" id="manual-task-input" placeholder="Type your task here...">
+    <select id="manual-category">
+      <option value="product">Product</option>
+      <option value="process">Process</option>
+      <option value="analytics">Analytics</option>
+      <option value="people">People</option>
+      <option value="urgent">Urgent</option>
+    </select>
+    <button onclick="addManualTask()">➕ Add Task</button>
+    <div id="nav-links">
+      <a href="#product">🧪 Product</a>
+      <a href="#process">⚙️ Process</a><br>
+      <a href="#analytics">📊 Analytics</a>
+      <a href="#people">👥 People</a>
+      <a href="#urgent">🚨 Urgent</a>
+    </div>
+  </div>
+
+  <div id="sections">
+    <div class="section" id="product"><h2>Product</h2><div class="task-list"></div></div>
+    <div class="section" id="process"><h2>Process</h2><div class="task-list"></div></div>
+    <div class="section" id="analytics"><h2>Analytics</h2><div class="task-list"></div></div>
+    <div class="section" id="people"><h2>People</h2><div class="task-list"></div></div>
+    <div class="section" id="urgent"><h2>Urgent</h2><div class="task-list"></div></div>
+  </div>
+
+  <h2>Completed</h2>
+  <div id="completed" class="task-list"></div>
+
+  <button id="backToTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">⬆️ Back to Top</button>
+
+  <script src="work_script.js"></script>
+</body>
+</html>
