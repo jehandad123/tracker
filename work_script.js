@@ -39,7 +39,8 @@ function handleVoiceCommand(transcript) {
     "process": "process",
     "analytics": "analytics",
     "people": "people",
-    "urgent": "urgent"
+    "urgent": "urgent",
+    "manager": "manager"
   };
 
   const lowerTranscript = transcript.toLowerCase();
@@ -120,7 +121,7 @@ function addTask(sectionId, text, save = true) {
   deleteBtn.innerText = "🗑️";
   deleteBtn.onclick = () => completeTask(div);
 
-  ["product", "process", "analytics", "people", "urgent"].forEach(cat => {
+  ["product", "process", "analytics", "people", "urgent", "manager"].forEach(cat => {
     if (cat !== sectionId) {
       const label = cat === "this-week" ? "Home" :
                     cat === "next-week" ? "Work" :
@@ -209,6 +210,7 @@ function saveTasks() {
     "analytics": [],
     "people": [],
     "urgent": [],
+    "manager": [],
     "completed": []
   };
 
