@@ -1,0 +1,109 @@
+
+body {
+  font-family: Arial, sans-serif;
+  font-size: 20px;
+  margin: 20px;
+  background: #f9f9f9;
+}
+h1, h2 {
+  font-size: 24px;
+}
+button, #nav-links a {
+  padding: 6px 10px;
+  margin: 4px;
+  font-size: 16px;
+  text-decoration: none;
+  border: 1px solid #999;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #000;
+  white-space: nowrap;
+}
+#mic-btn {
+  font-size: 22px;
+  padding: 16px 24px;
+}
+#mic-btn.listening {
+  background-color: #dcedc8;
+}
+#manual-entry {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+#manual-task-input {
+  padding: 12px;
+  width: 90%;
+  font-size: 18px;
+}
+#manual-category {
+  padding: 12px;
+  font-size: 18px;
+}
+#nav-links {
+  margin-left: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.section {
+  margin-bottom: 20px;
+  background: #ffffff;
+  padding: 14px;
+  border: 1px solid #ccc;
+}
+.task {
+  margin-top: 10px;
+  padding: 12px;
+  background: #e0f7fa;
+  width: 100%;
+}
+.task-text {
+  display: block;
+  font-size: 18px;
+  width: 100%;
+}
+.task-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 10px;
+  gap: 8px;
+  width: 100%;
+}
+.task .menu-container {
+  position: relative;
+}
+.task .dropdown-menu {
+  display: none;
+  position: absolute;
+  background: white;
+  border: 1px solid #ccc;
+  z-index: 100;
+}
+.task .dropdown-menu button {
+  display: block;
+  width: 100%;
+  font-size: 16px;
+}
+.completed {
+  text-decoration: line-through;
+  background: #c8e6c9;
+}
+.transcript {
+  font-style: italic;
+  color: #333;
+  margin-bottom: 20px;
+}
+#backToTop {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  font-size: 16px;
+  padding: 10px 16px;
+  border: 1px solid #999;
+  border-radius: 6px;
+  background-color: #f0f0f0;
+  z-index: 999;
+}
