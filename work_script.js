@@ -117,18 +117,28 @@ function addTask(sectionId, text, save = true) {
 
   const editBtn = document.createElement('button');
   editBtn.innerText = "✏️";
-  editBtn.onclick = () => editTask(span, sectionId);
+  editBtn.onclick = () => {
+  editTask(span, sectionId);
+  closeMenu();
+};
 
   const deleteBtn = document.createElement('button');
   deleteBtn.innerText = "🗑️";
-  deleteBtn.onclick = () => completeTask(div);
+  deleteBtn.onclick = () => {
+  completeTask(div);
+  closeMenu();
+};
 
   ["product", "process", "analytics", "people", "urgent", "manager"].forEach(cat => {
     if (cat !== sectionId) {
       const properLabel = cat.charAt(0).toUpperCase() + cat.slice(1);
     const moveBtn = document.createElement('button');
     moveBtn.innerText = `🔁 to ${properLabel}`;
-      moveBtn.onclick = () => moveToSection(div, sectionId, cat);
+     moveBtn.onclick = () => {
+  moveToSection(div, sectionId, cat);
+  closeMenu();
+};
+
       dropdownMenu.appendChild(moveBtn);
     }
   });
