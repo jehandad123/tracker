@@ -45,7 +45,9 @@ function handleVoiceCommand(transcript) {
 
   const lowerTranscript = transcript.toLowerCase();
   let matchedCategory = null;
+  let phraseToRemove = "";
 
+  // Match category
   for (const phrase in categories) {
     if (
       lowerTranscript.includes("to " + phrase) ||
@@ -53,30 +55,25 @@ function handleVoiceCommand(transcript) {
       lowerTranscript.endsWith(" " + phrase)
     ) {
       matchedCategory = categories[phrase];
+      phraseToRemove = phrase;
       break;
     }
   }
 
-  let cleanTask = transcript;
-
-  if (matchedCategory) {
-    const phraseToRemove = Object.keys(categories).find(key => categories[key] === matchedCategory);
-    cleanTask = transcript
-  .replace(new RegExp("to " + phraseToRemove, "i"), "")
-  .replace(new RegExp("to the " + phraseToRemove, "i"), "")
-  .replace(new RegExp(phraseToRemove, "i"), "")
-  .replace(/^add\s+/i, "")
-  .trim();
-  }
-
-  cleanTask = cleanTask.replace(/^add\s+/i, "").trim();
+  // Remove the command phrases from original transcript to preserve casing
+  let cleanTask = transcript
+    .replace(new RegExp("to " + phraseToRemove, "i"), "")
+    .replace(new RegExp("to the " + phraseToRemove, "i"), "")
+    .replace(new RegExp(phraseToRemove, "i"), "")
+    .replace(/^add\s+/i, "")
+    .trim();
 
   if (!cleanTask) {
     alert("Please say a valid task.");
     return;
   }
 
-  addTask(matchedCategory || "this-week", cleanTask);
+  addTask(matchedCategory || "product", cleanTask);
 }
 
 function addTask(sectionId, text, save = true) {
