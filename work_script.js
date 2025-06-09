@@ -61,10 +61,12 @@ function handleVoiceCommand(transcript) {
 
   if (matchedCategory) {
     const phraseToRemove = Object.keys(categories).find(key => categories[key] === matchedCategory);
-    cleanTask = cleanTask.toLowerCase()
-      .replace("to " + phraseToRemove, "")
-      .replace("to the " + phraseToRemove, "")
-      .replace(phraseToRemove, "");
+    cleanTask = transcript
+  .replace(new RegExp("to " + phraseToRemove, "i"), "")
+  .replace(new RegExp("to the " + phraseToRemove, "i"), "")
+  .replace(new RegExp(phraseToRemove, "i"), "")
+  .replace(/^add\s+/i, "")
+  .trim();
   }
 
   cleanTask = cleanTask.replace(/^add\s+/i, "").trim();
