@@ -98,7 +98,7 @@ button, #nav-links a {
 }
 #backToTop {
   position: fixed;
-  left: 20px;
+  right: 20px;
   bottom: 20px;
   font-size: 16px;
   padding: 10px 16px;
