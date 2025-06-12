@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JD Voice Task Manager</title>
+    <link rel="stylesheet" href="voice_filter_style.css">
+</head>
+<body>
+    <h1>JD Voice Task Manager</h1>
+
+    <div id="manual-entry">
+        <input id="manual-task-input" type="text" placeholder="Enter your task here...">
+        <select id="manual-category">
+            <option value="Product">Product</option>
+            <option value="Process">Process</option>
+            <option value="Analytics">Analytics</option>
+            <option value="People">People</option>
+            <option value="Urgent">Urgent</option>
+        </select>
+        <button onclick="addManualTask()">Add Task</button>
+    </div>
+
+    <div id="nav-links">
+        <a href="#Product">Product</a>
+        <a href="#Process">Process</a>
+        <a href="#Analytics">Analytics</a>
+        <a href="#People">People</a>
+        <a href="#Urgent">Urgent</a>
+    </div>
+
+    <div>
+        <button id="mic-btn" onclick="toggleVoiceInput()">🎤 Start Talking</button>
+    </div>
+
+    <div id="live-transcript"></div>
+
+    <div id="Product" class="section"><h2>Product</h2><div class="task-list" id="Product-tasks"></div></div>
+    <div id="Process" class="section"><h2>Process</h2><div class="task-list" id="Process-tasks"></div></div>
+    <div id="Analytics" class="section"><h2>Analytics</h2><div class="task-list" id="Analytics-tasks"></div></div>
+    <div id="People" class="section"><h2>People</h2><div class="task-list" id="People-tasks"></div></div>
+    <div id="Urgent" class="section"><h2>Urgent</h2><div class="task-list" id="Urgent-tasks"></div></div>
+
+    <script src="voice_filter_script.js"></script>
+</body>
+</html>

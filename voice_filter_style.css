@@ -1,0 +1,65 @@
+
+body {
+  font-family: Arial, sans-serif;
+  font-size: 20px;
+  margin: 20px;
+  background: #f9f9f9;
+}
+h1, h2 {
+  font-size: 24px;
+}
+button, #nav-links a {
+  padding: 6px 10px;
+  margin: 4px;
+  font-size: 16px;
+  text-decoration: none;
+  border: 1px solid #999;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #000;
+  white-space: nowrap;
+}
+#mic-btn {
+  font-size: 22px;
+  padding: 16px 24px;
+}
+#mic-btn.listening {
+  background-color: #dcedc8;
+}
+#manual-entry {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+#manual-task-input {
+  padding: 12px;
+  width: 90%;
+  font-size: 18px;
+}
+#manual-category {
+  padding: 12px;
+  font-size: 18px;
+}
+#nav-links {
+  margin-left: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.section {
+  margin-bottom: 20px;
+  background: #ffffff;
+  padding: 14px;
+  border: 1px solid #ccc;
+}
+.task {
+  margin-top: 10px;
+  padding: 12px;
+  background: #e0f7fa;
+  width: 100%;
+}
+.task-text {
+  display: block;
+  font-size: 18px;
+}
