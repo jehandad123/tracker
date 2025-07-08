@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Task Manager: Voice Task Add & Hands-Free GPT Conversation</title>
+  <script src="chrono.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    button { padding: 10px 20px; font-size: 16px; margin-top: 10px; cursor: pointer; }
+    #speakBtn.recording { background: #d32f2f; color: #fff; }
+    #stopBtn { margin-left: 10px; }
+    #transcript { margin-top: 20px; border: 1px solid #ccc; padding: 10px; min-height: 30px; white-space: pre-wrap; }
+    #gptAnswer { margin-top: 18px; padding: 10px; background: #f3f3f3; border-radius: 6px; min-height: 30px; }
+    #gptLoading { color: #d32f2f; display: none; }
+    .category { margin-top: 20px; }
+    .category h3 { margin-bottom: 5px; }
+    ul { list-style-type: disc; padding-left: 20px; }
+    input[type=text] { width: 80%; padding: 8px; font-size: 16px; }
+    .task-input { margin-top: 20px; }
+    .task-row { display: flex; align-items: center; margin-bottom: 5px; }
+    .task-text { flex: 1; }
+    .task-controls { display: flex; align-items: center; gap: 5px; }
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      background-color: #f9f9f9;
+      min-width: 100px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      z-index: 1;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .dropdown-content button {
+      color: black;
+      padding: 8px 12px;
+      text-align: left;
+      text-decoration: none;
+      display: block;
+      border: none;
+      background: none;
+      width: 100%;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .dropdown-content button:hover {
+      background-color: #f1f1f1;
+    }
+    .dropdown.show .dropdown-content {
+      display: block;
+    }
+    .edit-input {
+      width: 80%;
+      padding: 3px 6px;
+      font-size: 15px;
+    }
+    .hidden { display: none !important; }
+    .date-badge {
+      background: #e0e0e0;
+      color: #333;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+    #showAllBtn { margin-top: 10px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <button id="speakBtn">🎙️ Speak</button>
+  <button id="stopBtn" style="display:none;">⏹️ Stop Conversation</button>
+  <span id="gptLoading">Thinking...</span>
+  <div id="transcript"></div>
+  <div id="gptAnswer"></div>
+
+  <h2>Task Manager with Voice and Manual Input</h2>
+  <div class="task-input">
+    <input type="text" id="manualInput" placeholder="Enter task and category at end (e.g. Buy milk Shop)" />
+    <button id="addManualBtn">Add Task Manually</button>
+  </div>
+  <button id="showAllBtn" style="display:none;">Show All Tasks</button>
+  <div id="categories">
+    <div class="category" id="Home">
+      <h3>Home</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Today">
+      <h3>Today</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Urgent">
+      <h3>Urgent</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Shop">
+      <h3>Shop</h3>
+      <ul></ul>
+    </div>
+  </div>
+  <script>
+    // ====== CONFIG ======
+    const ASSEMBLYAI_API_KEY = "a83c32105e2a49b99ee1dc5ee4128a4e"; // Your AssemblyAI key
+    const OPENAI_API_KEY = "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";
+    const SILENCE_THRESHOLD = 0.01;
+    const SILENCE_DURATION = 3000; // 3 seconds
+
+    // ====== DOM ELEMENTS ======
+    const speakBtn = document.getElementById("speakBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const transcriptDiv = document.getElementById("transcript");
+    const manualInput = document.getElementById("manualInput");
+    const addManualBtn = document.getElementById("addManualBtn");
+    const showAllBtn = document.getElementById("showAllBtn");
+    const gptAnswer = document.getElementById("gptAnswer");
+    const gptLoading = document.getElementById("gptLoading");
+
+    const categories = ["Home", "Today", "Urgent", "Shop"];
+
+    // ====== TASK MANAGEMENT ======
+    function loadTasks() {
+      categories.forEach(cat => {
+        const tasks = JSON.parse(localStorage.getItem(cat)) || [];
+        const ul = document.querySelector(`#${cat} ul`);
+        ul.innerHTML = "";
+        tasks.forEach((taskObj, idx) => {
+          const li = document.createElement("li");
+          li.style.listStyleType = "none";
+          li.appendChild(createTaskRow(cat, taskObj, idx, tasks.length));
+          ul.appendChild(li);
+        });
+      });
+    }
+
+    function saveTasks(category, tasks) {
+      localStorage.setItem(category, JSON.stringify(tasks));
+    }
+
+    function saveTask(category, taskObj) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      tasks.push(taskObj);
+      saveTasks(category, tasks);
+    }
+
+    function addTask(inputText) {
+      const words = inputText.trim().split(" ");
+      let lastWord = words[words.length - 1];
+      lastWord = lastWord.replace(/[.,!?;:]+$/, "");
+      const category = categories.find(cat => cat.toLowerCase() === lastWord.toLowerCase());
+      if (!category) {
+        alert("Category not found at the end of the task. Please end your task with one of: " + categories.join(", "));
+        return;
+      }
+      let taskText = words.slice(0, words.length - 1).join(" ").trim();
+      taskText = taskText.replace(/[.,!?;:]+$/, "");
+      if (!taskText) {
+        alert("Task description is empty.");
+        return;
+      }
+      let parsedDate = chrono.parseDate(taskText);
+      const taskObj = { text: taskText, date: parsedDate ? parsedDate.toISOString() : null };
+      saveTask(category, taskObj);
+      loadTasks();
+    }
+
+    addManualBtn.onclick = () => {
+      const inputText = manualInput.value;
+      addTask(inputText);
+      manualInput.value = "";
+    };
+
+    // ====== VOICE & GPT LOGIC ======
+    let isRecording = false;
+    let isConversation = false;
+    let stopConversationFlag = false;
+    let mediaRecorder, audioChunks = [];
+    let silenceTimeout, audioContext, analyser, source, stream;
+
+    speakBtn.onclick = async () => {
+      if (isRecording || isConversation) return;
+      transcriptDiv.textContent = "";
+      gptAnswer.textContent = "";
+      // Start by listening for user input
+      await startVoiceInput();
+    };
+
+    stopBtn.onclick = () => {
+      stopConversationFlag = true;
+      isConversation = false;
+      stopBtn.style.display = "none";
+      if (isRecording && mediaRecorder) {
+        mediaRecorder.stop();
+      }
+      cleanupAudio();
+    };
+
+    async function startVoiceInput() {
+      isRecording = true;
+      audioChunks = [];
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.start();
+      speakBtn.textContent = "⏹️ Stop Recording";
+      speakBtn.classList.add("recording");
+
+      // Set up Web Audio API for silence detection
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      source.connect(analyser);
+      analyser.fftSize = 2048;
+      const data = new Uint8Array(analyser.fftSize);
+
+      let silenceMode = true; // Assume task mode until proven otherwise
+
+      // Silence detection loop
+      function checkSilence() {
+        analyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+          const normalized = (data[i] - 128) / 128;
+          sum += normalized * normalized;
+        }
+        const volume = Math.sqrt(sum / data.length);
+        if (volume < SILENCE_THRESHOLD) {
+          if (!silenceTimeout) {
+            silenceTimeout = setTimeout(() => {
+              if (isRecording && silenceMode) {
+                mediaRecorder.stop();
+                cleanupAudio();
+              }
+            }, SILENCE_DURATION);
+          }
+        } else {
+          if (silenceTimeout) {
+            clearTimeout(silenceTimeout);
+            silenceTimeout = null;
+          }
+        }
+        if (isRecording) {
+          requestAnimationFrame(checkSilence);
+        }
+      }
+      requestAnimationFrame(checkSilence);
+
+      mediaRecorder.ondataavailable = e => {
+        audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        isRecording = false;
+        speakBtn.textContent = "🎙️ Speak";
+        speakBtn.classList.remove("recording");
+        cleanupAudio();
+        transcriptDiv.textContent = "Uploading and transcribing...";
+
+        // Upload audio to AssemblyAI
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        const uploadRes = await fetch("https://api.assemblyai.com/v2/upload", {
+          method: "POST",
+          headers: { "authorization": ASSEMBLYAI_API_KEY },
+          body: audioBlob
+        });
+        const { upload_url } = await uploadRes.json();
+
+        // Request transcription
+        const transcriptRes = await fetch("https://api.assemblyai.com/v2/transcript", {
+          method: "POST",
+          headers: {
+            "authorization": ASSEMBLYAI_API_KEY,
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({ audio_url: upload_url })
+        });
+        const { id } = await transcriptRes.json();
+
+        // Poll for result
+        let completed = false;
+        while (!completed) {
+          await new Promise(res => setTimeout(res, 2000));
+          const pollingRes = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
+            headers: { "authorization": ASSEMBLYAI_API_KEY }
+          });
+          const data = await pollingRes.json();
+          if (data.status === "completed") {
+            transcriptDiv.textContent = data.text;
+            // Decide if task or conversation
+            const lower = data.text.trim().toLowerCase();
+            if (lower.startsWith("add ") || lower.startsWith("create ")) {
+              // Task mode (one-shot, silence auto-stop)
+              addTask(data.text.replace(/^(add|create)\s+/i, ""));
+              transcriptDiv.textContent += " → Task added.";
+              gptAnswer.textContent = "";
+              isConversation = false;
+              stopBtn.style.display = "none";
+            } else {
+              // Conversation mode (loop)
+              isConversation = true;
+              stopBtn.style.display = "inline-block";
+              await gptConversationLoop(data.text);
+            }
+            completed = true;
+          } else if (data.status === "failed") {
+            transcriptDiv.textContent = "Transcription failed.";
+            completed = true;
+          } else {
+            transcriptDiv.textContent = "Transcribing...";
+          }
+        }
+      };
+    }
+
+    function cleanupAudio() {
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      if (silenceTimeout) {
+        clearTimeout(silenceTimeout);
+        silenceTimeout = null;
+      }
+    }
+
+    async function gptConversationLoop(initialText) {
+      let userInput = initialText;
+      stopConversationFlag = false;
+      while (isConversation && !stopConversationFlag) {
+        gptLoading.style.display = "inline";
+        const gptResponse = await askGpt(userInput);
+        gptLoading.style.display = "none";
+        await speakText(gptResponse);
+        if (!isConversation || stopConversationFlag) break;
+        // Now listen again for user reply (no silence auto-stop, just manual or after GPT finishes speaking)
+        userInput = await listenOnceForConversation();
+        if (!userInput) break;
+      }
+      isConversation = false;
+      stopBtn.style.display = "none";
+    }
+
+    async function askGpt(userQuestion) {
+      gptAnswer.textContent = "";
+      const tasks = getAllTasks();
+      const prompt = `Here are my tasks:\n${tasks.map(t => `- [${t.category}] ${t.text}${t.date ? " (" + t.date.slice(0,10) + ")" : ""}`).join('\n')}\n\nUser question: ${userQuestion}\n\nAnswer in a clear, concise way. If dates are mentioned, use the task dates to filter.`;
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + OPENAI_API_KEY
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [
+              {role: "system", content: "You are a helpful personal task assistant."},
+              {role: "user", content: prompt}
+            ]
+          })
+        });
+        const data = await res.json();
+        let answer = "";
+        if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+          answer = data.choices[0].message.content.trim();
+          gptAnswer.textContent = answer;
+        } else if (data.error) {
+          answer = "API Error: " + data.error.message;
+          gptAnswer.textContent = answer;
+        } else {
+          answer = "No response from GPT.";
+          gptAnswer.textContent = answer;
+        }
+        return answer;
+      } catch (err) {
+        gptAnswer.textContent = "Request failed: " + err.message;
+        return "Request failed: " + err.message;
+      }
+    }
+
+    function speakText(text) {
+      return new Promise(resolve => {
+        if (!window.speechSynthesis) return resolve();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.onend = resolve;
+        utter.onerror = resolve;
+        window.speechSynthesis.speak(utter);
+      });
+    }
+
+    function listenOnceForConversation() {
+      // Same as startVoiceInput, but no silence detection, just manual stop or after speech ends
+      return new Promise(async (resolve) => {
+        isRecording = true;
+        audioChunks = [];
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.start();
+        transcriptDiv.textContent = "Listening for your reply...";
+        speakBtn.textContent = "⏹️ Stop Recording";
+        speakBtn.classList.add("recording");
+
+        let stopped = false;
+
+        // Optional: stop after 15 seconds max to avoid infinite listen
+        const maxDuration = setTimeout(() => {
+          if (isRecording && mediaRecorder) mediaRecorder.stop();
+        }, 15000);
+
+        mediaRecorder.ondataavailable = e => {
+          audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          clearTimeout(maxDuration);
+          isRecording = false;
+          speakBtn.textContent = "🎙️ Speak";
+          speakBtn.classList.remove("recording");
+          cleanupAudio();
+          transcriptDiv.textContent = "Uploading and transcribing...";
+          // Upload audio to AssemblyAI
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          const uploadRes = await fetch("https://api.assemblyai.com/v2/upload", {
+            method: "POST",
+            headers: { "authorization": ASSEMBLYAI_API_KEY },
+            body: audioBlob
+          });
+          const { upload_url } = await uploadRes.json();
+
+          // Request transcription
+          const transcriptRes = await fetch("https://api.assemblyai.com/v2/transcript", {
+            method: "POST",
+            headers: {
+              "authorization": ASSEMBLYAI_API_KEY,
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({ audio_url: upload_url })
+          });
+          const { id } = await transcriptRes.json();
+
+          // Poll for result
+          let completed = false;
+          while (!completed) {
+            await new Promise(res => setTimeout(res, 2000));
+            const pollingRes = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
+              headers: { "authorization": ASSEMBLYAI_API_KEY }
+            });
+            const data = await pollingRes.json();
+            if (data.status === "completed") {
+              transcriptDiv.textContent = data.text;
+              completed = true;
+              resolve(data.text);
+            } else if (data.status === "failed") {
+              transcriptDiv.textContent = "Transcription failed.";
+              completed = true;
+              resolve("");
+            } else {
+              transcriptDiv.textContent = "Transcribing...";
+            }
+          }
+        };
+      });
+    }
+
+    function getAllTasks() {
+      const allTasks = [];
+      categories.forEach(cat => {
+        const catTasks = JSON.parse(localStorage.getItem(cat)) || [];
+        catTasks.forEach(taskObj => {
+          allTasks.push({ ...taskObj, category: cat });
+        });
+      });
+      return allTasks;
+    }
+
+    // --- Helper functions for UI ---
+    function showOnlyCategory(cat) {
+      categories.forEach(category => {
+        document.getElementById(category).classList.toggle('hidden', category !== cat);
+      });
+      showAllBtn.style.display = "inline-block";
+    }
+
+    function showAllCategories() {
+      categories.forEach(category => {
+        document.getElementById(category).classList.remove('hidden');
+      });
+      showAllBtn.style.display = "none";
+      loadTasks();
+    }
+
+    function createTaskRow(category, taskObj, idx, total) {
+      const row = document.createElement("div");
+      row.className = "task-row";
+      const taskText = document.createElement("span");
+      taskText.className = "task-text";
+      taskText.textContent = taskObj.text;
+      if (taskObj.date) {
+        const badge = document.createElement("span");
+        badge.className = "date-badge";
+        const d = new Date(taskObj.date);
+        badge.textContent = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+        taskText.appendChild(badge);
+      }
+      const controls = document.createElement("div");
+      controls.className = "task-controls";
+      const upBtn = document.createElement("button");
+      upBtn.textContent = "⬆️";
+      upBtn.title = "Move Up";
+      upBtn.disabled = idx === 0;
+      upBtn.onclick = () => moveTask(category, idx, idx - 1);
+      const downBtn = document.createElement("button");
+      downBtn.textContent = "⬇️";
+      downBtn.title = "Move Down";
+      downBtn.disabled = idx === total - 1;
+      downBtn.onclick = () => moveTask(category, idx, idx + 1);
+      const topBtn = document.createElement("button");
+      topBtn.textContent = "⏫";
+      topBtn.title = "Move to Top";
+      topBtn.disabled = idx === 0;
+      topBtn.onclick = () => moveTask(category, idx, 0);
+      const bottomBtn = document.createElement("button");
+      bottomBtn.textContent = "⏬";
+      bottomBtn.title = "Move to Bottom";
+      bottomBtn.disabled = idx === total - 1;
+      bottomBtn.onclick = () => moveTask(category, idx, total - 1);
+      const dropdown = document.createElement("div");
+      dropdown.className = "dropdown";
+      const dotsBtn = document.createElement("button");
+      dotsBtn.textContent = "⋮";
+      dotsBtn.title = "More";
+      dotsBtn.onclick = (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.dropdown').forEach(d => {
+          if (d !== dropdown) d.classList.remove('show');
+        });
+        dropdown.classList.toggle("show");
+      };
+      const dropdownContent = document.createElement("div");
+      dropdownContent.className = "dropdown-content";
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Edit";
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        dropdown.classList.remove("show");
+        editTask(category, idx, taskText, row);
+      };
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        dropdown.classList.remove("show");
+        deleteTask(category, idx);
+      };
+      dropdownContent.appendChild(editBtn);
+      dropdownContent.appendChild(deleteBtn);
+      dropdown.appendChild(dotsBtn);
+      dropdown.appendChild(dropdownContent);
+      controls.appendChild(upBtn);
+      controls.appendChild(downBtn);
+      controls.appendChild(topBtn);
+      controls.appendChild(bottomBtn);
+      controls.appendChild(dropdown);
+      row.appendChild(taskText);
+      row.appendChild(controls);
+      document.addEventListener("click", () => dropdown.classList.remove("show"));
+      return row;
+    }
+
+    function moveTask(category, fromIdx, toIdx) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      if (fromIdx < 0 || toIdx < 0 || fromIdx >= tasks.length || toIdx >= tasks.length) return;
+      const [moved] = tasks.splice(fromIdx, 1);
+      tasks.splice(toIdx, 0, moved);
+      saveTasks(category, tasks);
+      loadTasks();
+    }
+
+    function deleteTask(category, idx) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      tasks.splice(idx, 1);
+      saveTasks(category, tasks);
+      loadTasks();
+    }
+
+    function editTask(category, idx, taskTextElem, row) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      const oldTaskObj = tasks[idx];
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "edit-input";
+      input.value = oldTaskObj.text;
+      taskTextElem.replaceWith(input);
+      input.focus();
+      function saveEdit() {
+        const newText = input.value.trim();
+        if (newText) {
+          let parsedDate = chrono.parseDate(newText);
+          tasks[idx] = { text: newText, date: parsedDate ? parsedDate.toISOString() : null };
+          saveTasks(category, tasks);
+          loadTasks();
+        } else {
+          alert("Task cannot be empty.");
+        }
+      }
+      input.onkeydown = (e) => {
+        if (e.key === "Enter") saveEdit();
+        if (e.key === "Escape") loadTasks();
+      };
+      input.onblur = saveEdit;
+    }
+
+    loadTasks();
+  </script>
+</body>
+</html>
