@@ -126,12 +126,12 @@
 
   <script>
     // ====== CONFIG ======
-    const SILENCE_THRESHOLD = 0.2;
+    const SILENCE_THRESHOLD = 0.03;
     const SILENCE_DURATION = 2000; // 2 seconds
     const MIC_THRESHOLD = 0.03; // Adjust for noise sensitivity
 
     // ====== NEW BEEP FUNCTION (Web Audio API) ======
-    function playBeep(frequency = 880, duration = 200) {
+    function playBeep(frequency = 1500, duration = 120) {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = ctx.createOscillator();
@@ -147,6 +147,7 @@
         oscillator.onended = () => ctx.close();
       } catch (e) {}
     }
+
     // ====== DOM ELEMENTS ======
     const openaiKeyInput = document.getElementById("openaiKey");
     const assemblyKeyInput = document.getElementById("assemblyKey");
@@ -341,6 +342,8 @@
     };
 
     async function startVoiceInputForTask() {
+      playBeep();
+      await sleep(250); // Let beep finish before starting mic
       await listenWithSilenceDetection(async (transcript) => {
         addTask(transcript);
         transcriptDiv.textContent += " → Task added.";
@@ -406,33 +409,34 @@
           continue;
         }
         playBeep();
-        await sleep(200);
+        await sleep(250); // Let beep finish before starting mic
         transcriptDiv.textContent = "Listening...";
         let userInput = await listenOnceWithSilenceDetection(handsFreeBtn);
 
         // Handle empty or failed STT
         if (!userInput || !userInput.trim()) {
+          await speakTextWithWebSpeech("Sorry, can you repeat please.");
+          await sleep(400);
           playBeep();
-          await speakTextWithWebSpeech("Sorry, can you repeat please?");
+          await sleep(250);
           continue;
         }
 
         // Handle stop voice command
         if (/^(stop|disconnect|goodbye|exit|cancel)$/i.test(userInput.trim())) {
-          playBeep();
           await speakTextWithWebSpeech("Conversation ended.");
+          await sleep(400);
+          playBeep();
+          await sleep(250);
           break;
         }
 
-        // Show processing feedback
         gptLoading.style.display = "inline";
         transcriptDiv.textContent = "Thinking...";
 
-        // Preprocess input
         const preprocessedInput = preprocessInput(userInput);
         const toParse = stripBeforeAddOrCreate(preprocessedInput);
 
-        // Try GPT function call for add/create
         let handled = false;
         try {
           const lower = toParse.trim().toLowerCase();
@@ -441,32 +445,43 @@
             gptLoading.style.display = "none";
             if (result && result.task && result.category) {
               await speakTextWithWebSpeech("Task added to " + result.category + " category.");
+              await sleep(400);
+              playBeep();
+              await sleep(250);
               addTaskFromGPT(result.task, result.category);
               handled = true;
             } else {
+              await speakTextWithWebSpeech("Sorry, can you repeat please.");
+              await sleep(400);
               playBeep();
-              await speakTextWithWebSpeech("Sorry, can you repeat please?");
+              await sleep(250);
               continue;
             }
           }
         } catch (e) {
           gptLoading.style.display = "none";
+          await speakTextWithWebSpeech("Sorry, can you repeat please.");
+          await sleep(400);
           playBeep();
-          await speakTextWithWebSpeech("Sorry, can you repeat please?");
+          await sleep(250);
           continue;
         }
 
-        // If not handled as add/create, do normal GPT Q&A
         if (!handled) {
           try {
             const gptResponse = await askGpt(toParse);
             gptLoading.style.display = "none";
             lastGptResponse = gptResponse;
             await speakTextWithWebSpeech(gptResponse);
+            await sleep(400);
+            playBeep();
+            await sleep(250);
           } catch (e) {
             gptLoading.style.display = "none";
+            await speakTextWithWebSpeech("Sorry, can you repeat please.");
+            await sleep(400);
             playBeep();
-            await speakTextWithWebSpeech("Sorry, can you repeat please?");
+            await sleep(250);
             continue;
           }
         }
@@ -712,7 +727,7 @@
       const ua = navigator.userAgent;
       const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
       if (isIOS) {
-        return voices.find(v => v.name === "Ava") ||
+        return voices.find(v => v.name === "Alex") ||
                voices.find(v => v.name === "Samantha") ||
                voices[0];
       } else if (ua.indexOf("Windows") !== -1) {
