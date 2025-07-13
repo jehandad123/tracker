@@ -154,6 +154,7 @@
       return null;
     }
 
+    // Improved preprocessing: remove punctuation, join fragments, collapse whitespace
     function preprocessInput(input) {
       return input.replace(/[\.\,\!\?\;\:]+/g, ' ').replace(/\s+/g, ' ').trim();
     }
@@ -298,14 +299,16 @@
       let userInput = await listenOnceWithSilenceDetection(handsFreeBtn);
       stopConversationFlag = false;
       while (isConversation && !stopConversationFlag && userInput) {
-        const lower = userInput.trim().toLowerCase();
+        // Improved: preprocess input to join fragments and remove punctuation
+        const preprocessedInput = preprocessInput(userInput);
+        const lower = preprocessedInput.trim().toLowerCase();
         if (lower.startsWith("add ") || lower.startsWith("create ")) {
-          let toParse = userInput;
-          if (lower.startsWith("add ")) toParse = userInput.slice(userInput.toLowerCase().indexOf("add ") + 4);
-          if (lower.startsWith("create ")) toParse = userInput.slice(userInput.toLowerCase().indexOf("create ") + 7);
+          let toParse = preprocessedInput;
+          if (lower.startsWith("add ")) toParse = preprocessedInput.slice(preprocessedInput.toLowerCase().indexOf("add ") + 4);
+          if (lower.startsWith("create ")) toParse = preprocessedInput.slice(preprocessedInput.toLowerCase().indexOf("create ") + 7);
 
           gptLoading.style.display = "inline";
-          const result = await extractTaskAndCategoryWithGPT(preprocessInput(toParse));
+          const result = await extractTaskAndCategoryWithGPT(toParse); // Use preprocessed!
           gptLoading.style.display = "none";
           if (result && result.task && result.category) {
             addTaskFromGPT(result.task, result.category);
@@ -315,7 +318,7 @@
           }
         } else {
           gptLoading.style.display = "inline";
-          const gptResponse = await askGpt(userInput);
+          const gptResponse = await askGpt(preprocessedInput);
           gptLoading.style.display = "none";
           await speakTextWithWebSpeech(gptResponse);
         }
@@ -431,6 +434,7 @@
       });
     }
 
+    // === Strict function call enforcement ===
     async function extractTaskAndCategoryWithGPT(userInput) {
       const OPENAI_API_KEY = getOpenAIKey();
       if (!OPENAI_API_KEY) {
@@ -438,6 +442,12 @@
         return null;
       }
       const validCategories = categories;
+      const systemPrompt =
+        "You are an API backend. ALWAYS use the extract_task function to add a task and category. NEVER reply conversationally. " +
+        "Only use these categories: " + validCategories.join(", ") + ". " +
+        "When returning the category, ONLY use exactly one of these. Do not add extra words like 'category', 'list', or 'task'. " +
+        "If you cannot determine a valid category, use an empty string for category.";
+
       const functionSpec = {
         name: "extract_task",
         description: "Extract a single task and its category from the user's request.",
@@ -461,15 +471,8 @@
           body: JSON.stringify({
             model: "gpt-4o",
             messages: [
-              {
-                role: "system",
-                content: "Extract a single task and its category from the user's request. " +
-                  "Only use these categories: " + validCategories.join(", ") +
-                  ". When returning the category, ONLY use exactly one of these: " +
-                  validCategories.join(", ") +
-                  ". Do not add extra words like 'category', 'list', or 'task'. If you cannot determine a valid category, use an empty string for category."
-              },
-              {role: "user", content: userInput}
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userInput }
             ],
             tools: [
               {
