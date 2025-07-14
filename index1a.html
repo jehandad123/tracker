@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hands-Free Task Manager</title>
+  <script src="chrono.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    button { padding: 10px 20px; font-size: 16px; margin-top: 10px; cursor: pointer; }
+    #speakBtn.recording, #handsFreeBtn.recording { background: #d32f2f; color: #fff; }
+    #stopBtn, #interruptTTSBtn, #muteMicBtn { margin-left: 10px; }
+    #transcript { margin-top: 20px; border: 1px solid #ccc; padding: 10px; min-height: 30px; white-space: pre-wrap; }
+    #gptAnswer { margin-top: 18px; padding: 10px; background: #f3f3f3; border-radius: 6px; min-height: 30px; }
+    #gptLoading { color: #d32f2f; display: none; }
+    .category { margin-top: 20px; }
+    .category h3 { margin-bottom: 5px; }
+    ul { list-style-type: disc; padding-left: 20px; }
+    input[type=text] { width: 80%; padding: 8px; font-size: 16px; }
+    .api-inputs { margin-bottom: 16px; }
+    .api-inputs label { display: block; margin-top: 8px; }
+    .task-input { margin-top: 20px; }
+    .task-row { display: flex; align-items: center; margin-bottom: 5px; }
+    .task-text { flex: 1; }
+    .task-controls { display: flex; align-items: center; gap: 5px; }
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      background-color: #f9f9f9;
+      min-width: 100px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      z-index: 1;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .dropdown-content button {
+      color: black;
+      padding: 8px 12px;
+      text-align: left;
+      text-decoration: none;
+      display: block;
+      border: none;
+      background: none;
+      width: 100%;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .dropdown-content button:hover {
+      background-color: #f1f1f1;
+    }
+    .dropdown.show .dropdown-content {
+      display: block;
+    }
+    .edit-input {
+      width: 80%;
+      padding: 3px 6px;
+      font-size: 15px;
+    }
+    .hidden { display: none !important; }
+    .date-badge {
+      background: #e0e0e0;
+      color: #333;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+    #showAllBtn { margin-top: 10px; margin-bottom: 10px; }
+    #exportTasksBtn { margin-top: 16px; }
+    #backupArea { margin-top: 8px; font-size: 13px; }
+    #interruptTTSBtn, #muteMicBtn { background: #fbc02d; color: #222; }
+    #muteMicBtn.muted { background: #bdbdbd; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="api-inputs">
+    <label>
+      Deepgram API Key:
+      <input type="text" id="deepgramKey" placeholder="Paste your Deepgram API Key" autocomplete="off" />
+    </label>
+    <label>
+      OpenAI API Key:
+      <input type="text" id="openaiKey" placeholder="Paste your OpenAI API Key" autocomplete="off" />
+    </label>
+    <button id="saveKeysBtn">Save API Keys</button>
+    <span id="apiKeySaved" style="color: green; display: none;">✔️ Saved!</span>
+  </div>
+  <button id="speakBtn">🎙️ Speak</button>
+  <button id="handsFreeBtn">🤖 Hands Free</button>
+  <button id="stopBtn" style="display:none;">⏹️ Stop Conversation</button>
+  <span id="gptLoading">Thinking...</span>
+  <div id="transcript"></div>
+  <div id="gptAnswer"></div>
+
+  <h2>Task Manager with Voice and Manual Input</h2>
+  <div class="task-input">
+    <input type="text" id="manualInput" placeholder="Enter task and category at end (e.g. Buy milk Shop)" />
+    <button id="addManualBtn">Add Task Manually</button>
+  </div>
+  <button id="showAllBtn" style="display:none;">Show All Tasks</button>
+  <div id="categories">
+    <div class="category" id="Home">
+      <h3>Home</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Today">
+      <h3>Today</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Urgent">
+      <h3>Urgent</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Shop">
+      <h3>Shop</h3>
+      <ul></ul>
+    </div>
+  </div>
+  <button id="exportTasksBtn">Export Tasks (Backup)</button>
+  <button id="importTasksBtn">Import Tasks</button>
+  <textarea id="backupArea" style="width:100%;height:80px;" placeholder="Backup JSON will appear here. Paste here to restore."></textarea>
+  <script>
+    // ====== STORAGE ======
+    function getDeepgramKey() {
+      return localStorage.getItem("deepgram_api_key") || "";
+    }
+    function getOpenAIKey() {
+      return localStorage.getItem("openai_api_key") || "";
+    }
+    function saveKeys() {
+      localStorage.setItem("deepgram_api_key", deepgramKeyInput.value.trim());
+      localStorage.setItem("openai_api_key", openaiKeyInput.value.trim());
+      apiKeySaved.style.display = "inline";
+      setTimeout(() => apiKeySaved.style.display = "none", 1500);
+    }
+    const deepgramKeyInput = document.getElementById("deepgramKey");
+    const openaiKeyInput = document.getElementById("openaiKey");
+    const saveKeysBtn = document.getElementById("saveKeysBtn");
+    const apiKeySaved = document.getElementById("apiKeySaved");
+    deepgramKeyInput.value = getDeepgramKey();
+    openaiKeyInput.value = getOpenAIKey();
+    saveKeysBtn.onclick = saveKeys;
+
+    // ====== DOM ELEMENTS ======
+    const speakBtn = document.getElementById("speakBtn");
+    const handsFreeBtn = document.getElementById("handsFreeBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const transcriptDiv = document.getElementById("transcript");
+    const manualInput = document.getElementById("manualInput");
+    const addManualBtn = document.getElementById("addManualBtn");
+    const showAllBtn = document.getElementById("showAllBtn");
+    const gptAnswer = document.getElementById("gptAnswer");
+    const gptLoading = document.getElementById("gptLoading");
+    const exportTasksBtn = document.getElementById("exportTasksBtn");
+    const importTasksBtn = document.getElementById("importTasksBtn");
+    const backupArea = document.getElementById("backupArea");
+    const categories = ["Home", "Today", "Urgent", "Shop"];
+
+    // ==== TASK LOGIC ====
+    function loadTasks() {
+      categories.forEach(cat => {
+        const tasks = JSON.parse(localStorage.getItem(cat)) || [];
+        const ul = document.querySelector(`#${cat} ul`);
+        ul.innerHTML = "";
+        tasks.forEach((taskObj, idx) => {
+          const li = document.createElement("li");
+          li.style.listStyleType = "none";
+          li.appendChild(createTaskRow(cat, taskObj, idx, tasks.length));
+          ul.appendChild(li);
+        });
+      });
+    }
+    function saveTasks(category, tasks) {
+      localStorage.setItem(category, JSON.stringify(tasks));
+    }
+    function saveTask(category, taskObj) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      tasks.push(taskObj);
+      saveTasks(category, tasks);
+    }
+    function addTask(inputText) {
+      const cleaned = inputText.replace(/[\.\,\!\?\;\:]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const words = cleaned.trim().split(" ");
+      let lastWord = words[words.length - 1];
+      lastWord = lastWord.replace(/[.,!?;:]+$/, "");
+      const category = extractValidCategory(lastWord);
+      if (!category) {
+        alert("Category not found at the end of the task. Please end your task with one of: " + categories.join(", "));
+        return;
+      }
+      let taskText = words.slice(0, words.length - 1).join(" ").trim();
+      taskText = taskText.replace(/[.,!?;:]+$/, "");
+      if (!taskText) {
+        alert("Task description is empty.");
+        return;
+      }
+      let parsedDate = chrono.parseDate(taskText);
+      const taskObj = { text: taskText, date: parsedDate ? parsedDate.toISOString() : null };
+      saveTask(category, taskObj);
+      loadTasks();
+    }
+    function extractValidCategory(raw) {
+      if (!raw) return null;
+      let normalized = raw.toLowerCase();
+      normalized = normalized.replace(/[\.\,\!\?\;\:]+/g, '');
+      normalized = normalized.replace(/\b(category|list|task|under|the|a|an|in|to|for|on|of|as|at|with|by|from|into|onto|and|or|add|new|my)\b/g, '').trim();
+      normalized = normalized.replace(/\s{2,}/g, ' ').trim();
+      for (const cat of categories) {
+        if (normalized === cat.toLowerCase()) return cat;
+        if (normalized.includes(cat.toLowerCase())) return cat;
+      }
+      return null;
+    }
+    addManualBtn.onclick = () => {
+      const inputText = manualInput.value;
+      addTask(inputText);
+      manualInput.value = "";
+    };
+
+    // ====== BACKUP/RESTORE ======
+    exportTasksBtn.onclick = function() {
+      const backup = {};
+      categories.forEach(cat => {
+        backup[cat] = JSON.parse(localStorage.getItem(cat)) || [];
+      });
+      backupArea.value = JSON.stringify(backup, null, 2);
+    };
+    importTasksBtn.onclick = function() {
+      try {
+        const backup = JSON.parse(backupArea.value);
+        Object.entries(backup).forEach(([cat, tasks]) => {
+          if (categories.includes(cat)) {
+            localStorage.setItem(cat, JSON.stringify(tasks));
+          }
+        });
+        loadTasks();
+        alert("Tasks restored!");
+      } catch (e) {
+        alert("Invalid backup JSON.");
+      }
+    };
+
+    // ====== DEEPGRAM LIVE STT ======
+    async function deepgramLiveTranscribe(onTranscript, buttonElem, stopSignal) {
+      const DEEPGRAM_API_KEY = getDeepgramKey();
+      if (!DEEPGRAM_API_KEY) {
+        alert("Please enter and save your Deepgram API key.");
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
+      // Deepgram WebSocket
+      const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?punctuate=true&language=en-US`);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        buttonElem.textContent = "⏹️ Stop Recording";
+        buttonElem.classList.add("recording");
+        transcriptDiv.textContent = "Listening...";
+        ws.send(JSON.stringify({type: "config", api_key: DEEPGRAM_API_KEY}));
+      };
+
+      let finalTranscript = "";
+      let lastPartial = "";
+
+      ws.onmessage = (msg) => {
+        const data = JSON.parse(msg.data);
+        if (data.channel && data.channel.alternatives && data.channel.alternatives[0]) {
+          const alt = data.channel.alternatives[0];
+          if (alt.transcript) {
+            if (data.is_final) {
+              finalTranscript += (finalTranscript ? " " : "") + alt.transcript;
+              lastPartial = "";
+            } else {
+              lastPartial = alt.transcript;
+            }
+            transcriptDiv.textContent = finalTranscript + (lastPartial ? " " + lastPartial : "");
+          }
+        }
+      };
+
+      ws.onerror = (e) => {
+        transcriptDiv.textContent = "Deepgram WebSocket error.";
+      };
+
+      ws.onclose = () => {
+        buttonElem.textContent = buttonElem === speakBtn ? "🎙️ Speak" : "🤖 Hands Free";
+        buttonElem.classList.remove("recording");
+        transcriptDiv.textContent = finalTranscript;
+        processor.disconnect();
+        source.disconnect();
+        audioContext.close();
+        stream.getTracks().forEach(track => track.stop());
+        if (finalTranscript) onTranscript(finalTranscript);
+      };
+
+      // Send audio to Deepgram
+      processor.onaudioprocess = function (e) {
+        if (ws.readyState !== 1) return;
+        if (stopSignal && stopSignal.stopped) {
+          ws.close();
+          return;
+        }
+        const input = e.inputBuffer.getChannelData(0);
+        const buffer = new Int16Array(input.length);
+        for (let i = 0; i < input.length; i++) {
+          buffer[i] = Math.min(1, input[i]) * 0x7fff;
+        }
+        ws.send(buffer.buffer);
+      };
+
+      // Stop logic
+      buttonElem.onclick = () => {
+        if (stopSignal) stopSignal.stopped = true;
+        ws.close();
+      };
+    }
+
+    // ====== GPT LOGIC ======
+    async function askGpt(userQuestion) {
+      const OPENAI_API_KEY = getOpenAIKey();
+      if (!OPENAI_API_KEY) {
+        alert("Please enter and save your OpenAI API key.");
+        return "";
+      }
+      gptAnswer.textContent = "";
+      const tasks = getAllTasks();
+      const prompt = `Here are my tasks:\n${tasks.map(t => `- [${t.category}] ${t.text}${t.date ? " (" + t.date.slice(0,10) + ")" : ""}`).join('\n')}\n\nUser question: ${userQuestion}\n\nAnswer in a clear, concise way. If dates are mentioned, use the task dates to filter.`;
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + OPENAI_API_KEY
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [
+              {role: "system", content: "You are a helpful personal task assistant."},
+              {role: "user", content: prompt}
+            ]
+          })
+        });
+        const data = await res.json();
+        let answer = "";
+        if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+          answer = data.choices[0].message.content.trim();
+          gptAnswer.textContent = answer;
+        } else if (data.error) {
+          answer = "API Error: " + data.error.message;
+          gptAnswer.textContent = answer;
+        } else {
+          answer = "No response from GPT.";
+          gptAnswer.textContent = answer;
+        }
+        return answer;
+      } catch (err) {
+        gptAnswer.textContent = "Request failed: " + err.message;
+        return "Request failed: " + err.message;
+      }
+    }
+    function getAllTasks() {
+      const allTasks = [];
+      categories.forEach(cat => {
+        const catTasks = JSON.parse(localStorage.getItem(cat)) || [];
+        catTasks.forEach(taskObj => {
+          allTasks.push({ ...taskObj, category: cat });
+        });
+      });
+      return allTasks;
+    }
+
+    // ====== HANDS FREE LOGIC ======
+    let isConversation = false;
+    handsFreeBtn.onclick = async () => {
+      if (isConversation) return;
+      isConversation = true;
+      stopBtn.style.display = "inline-block";
+      transcriptDiv.textContent = "";
+      gptAnswer.textContent = "";
+      let stopSignal = { stopped: false };
+      stopBtn.onclick = () => {
+        stopSignal.stopped = true;
+        isConversation = false;
+        stopBtn.style.display = "none";
+      };
+      while (!stopSignal.stopped) {
+        await new Promise(resolve => {
+          deepgramLiveTranscribe(async (userInput) => {
+            if (!userInput || !userInput.trim()) {
+              transcriptDiv.textContent = "Sorry, can you repeat please?";
+              resolve();
+              return;
+            }
+            // If user says stop, exit loop
+            if (/^(stop|disconnect|goodbye|exit|cancel)$/i.test(userInput.trim())) {
+              isConversation = false;
+              stopBtn.style.display = "none";
+              transcriptDiv.textContent = "Conversation ended.";
+              resolve();
+              return;
+            }
+            gptLoading.style.display = "inline";
+            transcriptDiv.textContent = "Thinking...";
+            const gptResponse = await askGpt(userInput.trim());
+            gptLoading.style.display = "none";
+            // Speak answer (Web Speech API)
+            if (gptResponse) {
+              await speakTextWithWebSpeech(gptResponse);
+            }
+            resolve();
+          }, handsFreeBtn, stopSignal);
+        });
+      }
+      isConversation = false;
+      stopBtn.style.display = "none";
+    };
+
+    // ====== TTS ======
+    function speakTextWithWebSpeech(text) {
+      return new Promise((resolve) => {
+        const synth = window.speechSynthesis;
+        if (!synth) {
+          resolve();
+          return;
+        }
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.pitch = 1;
+        utter.rate = 1;
+        utter.onend = resolve;
+        utter.onerror = resolve;
+        synth.speak(utter);
+      });
+    }
+
+    // ====== UTILITIES ======
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function createTaskRow(category, taskObj, idx, total) {
+      const row = document.createElement("div");
+      row.className = "task-row";
+      const taskText = document.createElement("span");
+      taskText.className = "task-text";
+      taskText.textContent = taskObj.text;
+      if (taskObj.date) {
+        const badge = document.createElement("span");
+        badge.className = "date-badge";
+        const d = new Date(taskObj.date);
+        badge.textContent = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+        taskText.appendChild(badge);
+      }
+      const controls = document.createElement("div");
+      controls.className = "task-controls";
+      const upBtn = document.createElement("button");
+      upBtn.textContent = "⬆️";
+      upBtn.title = "Move Up";
+      upBtn.disabled = idx === 0;
+      upBtn.onclick = () => moveTask(category, idx, idx - 1);
+      const downBtn = document.createElement("button");
+      downBtn.textContent = "⬇️";
+      downBtn.title = "Move Down";
+      downBtn.disabled = idx === total - 1;
+      downBtn.onclick = () => moveTask(category, idx, idx + 1);
+      const topBtn = document.createElement("button");
+      topBtn.textContent = "⏫";
+      topBtn.title = "Move to Top";
+      topBtn.disabled = idx === 0;
+      topBtn.onclick = () => moveTask(category, idx, 0);
+      const bottomBtn = document.createElement("button");
+      bottomBtn.textContent = "⏬";
+      bottomBtn.title = "Move to Bottom";
+      bottomBtn.disabled = idx === total - 1;
+      bottomBtn.onclick = () => moveTask(category, idx, total - 1);
+      const dropdown = document.createElement("div");
+      dropdown.className = "dropdown";
+      const dotsBtn = document.createElement("button");
+      dotsBtn.textContent = "⋮";
+      dotsBtn.title = "More";
+      dotsBtn.onclick = (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.dropdown').forEach(d => {
+          if (d !== dropdown) d.classList.remove('show');
+        });
+        dropdown.classList.toggle("show");
+      };
+      const dropdownContent = document.createElement("div");
+      dropdownContent.className = "dropdown-content";
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Edit";
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        dropdown.classList.remove("show");
+        editTask(category, idx, taskText, row);
+      };
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        dropdown.classList.remove("show");
+        deleteTask(category, idx);
+      };
+      dropdownContent.appendChild(editBtn);
+      dropdownContent.appendChild(deleteBtn);
+      dropdown.appendChild(dotsBtn);
+      dropdown.appendChild(dropdownContent);
+      controls.appendChild(upBtn);
+      controls.appendChild(downBtn);
+      controls.appendChild(topBtn);
+      controls.appendChild(bottomBtn);
+      controls.appendChild(dropdown);
+      row.appendChild(taskText);
+      row.appendChild(controls);
+      document.addEventListener("click", () => dropdown.classList.remove('show'));
+      return row;
+    }
+    function moveTask(category, fromIdx, toIdx) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      if (fromIdx < 0 || toIdx < 0 || fromIdx >= tasks.length || toIdx >= tasks.length) return;
+      const [moved] = tasks.splice(fromIdx, 1);
+      tasks.splice(toIdx, 0, moved);
+      saveTasks(category, tasks);
+      loadTasks();
+    }
+    function deleteTask(category, idx) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      tasks.splice(idx, 1);
+      saveTasks(category, tasks);
+      loadTasks();
+    }
+    function editTask(category, idx, taskTextElem, row) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      const oldTaskObj = tasks[idx];
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "edit-input";
+      input.value = oldTaskObj.text;
+      taskTextElem.replaceWith(input);
+      input.focus();
+      function saveEdit() {
+        const newText = input.value.trim();
+        if (newText) {
+          let parsedDate = chrono.parseDate(newText);
+          tasks[idx] = { text: newText, date: parsedDate ? parsedDate.toISOString() : null };
+          saveTasks(category, tasks);
+          loadTasks();
+        } else {
+          alert("Task cannot be empty.");
+        }
+      }
+      input.onkeydown = (e) => {
+        if (e.key === "Enter") saveEdit();
+        if (e.key === "Escape") loadTasks();
+      };
+      input.onblur = saveEdit;
+    }
+    loadTasks();
+  </script>
+</body>
+</html>
