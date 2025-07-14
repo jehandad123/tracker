@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Strict iOS-Compatible Hands-Free Voice-to-GPT Q&A</title>
+  <title>Hands-Free Voice-to-GPT Q&A (Deepgram, Strict Sequencing)</title>
   <style>
     body { font-family: sans-serif; max-width: 500px; margin: 40px auto; }
     input[type=text] { width: 70%; padding: 8px; font-size: 16px; }
@@ -12,7 +12,7 @@
   </style>
 </head>
 <body>
-  <h2>Strict iOS-Compatible Hands-Free Voice-to-GPT Q&A</h2>
+  <h2>Hands-Free Voice-to-GPT Q&A (Deepgram, Strict Sequencing)</h2>
   <div>
     <label>
       Deepgram API Key:
@@ -52,6 +52,7 @@
     const gptAnswerDiv = document.getElementById("gptAnswer");
     let stopLoop = false;
 
+    // Strictly close all audio resources before TTS
     async function deepgramTranscribeOnceWithTimeout(timeoutMs = 2000) {
       const apiKey = dgkeyInput.value.trim();
       if (!apiKey) { alert("Enter Deepgram API key."); return null; }
@@ -60,7 +61,6 @@
       let finalTranscript = "";
       let socket, mediaRecorder, stream;
       let silenceTimer = null;
-      let stopped = false;
 
       return new Promise(async (resolve) => {
         try {
@@ -91,7 +91,6 @@
               // Reset silence timer on new speech
               if (silenceTimer) clearTimeout(silenceTimer);
               silenceTimer = setTimeout(() => {
-                stopped = true;
                 if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
                 if (socket && socket.readyState === 1) socket.close();
                 if (stream) stream.getTracks().forEach(track => track.stop());
@@ -118,7 +117,6 @@
           }
 
           stopBtn.onclick = () => {
-            stopped = true;
             stopLoop = true;
             if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
             if (socket && socket.readyState === 1) socket.close();
@@ -171,8 +169,7 @@
       return new Promise((resolve) => {
         const synth = window.speechSynthesis;
         if (!synth) return resolve();
-        // Cancel any previous speech (important for iOS)
-        synth.cancel();
+        synth.cancel(); // Cancel any previous speech
         const utter = new SpeechSynthesisUtterance(text);
         utter.pitch = 1;
         utter.rate = 1;
