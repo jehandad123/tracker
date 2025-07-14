@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Continuous Voice-to-GPT Q&A (No Feedback Loop)</title>
+  <title>Continuous Voice-to-GPT Q&A (iOS Friendly)</title>
   <style>
     body { font-family: sans-serif; max-width: 500px; margin: 40px auto; }
     input[type=text] { width: 70%; padding: 8px; font-size: 16px; }
@@ -12,7 +12,7 @@
   </style>
 </head>
 <body>
-  <h2>Continuous Voice-to-GPT Q&A (No Feedback Loop)</h2>
+  <h2>Continuous Voice-to-GPT Q&A (iOS Friendly)</h2>
   <div>
     <label>
       Deepgram API Key:
@@ -160,7 +160,6 @@
           return "";
         }
         gptAnswerDiv.textContent = answer || "No response from GPT";
-        if (answer) await speakTextWithWebSpeech(answer); // <-- Await here!
         return answer;
       } catch (err) {
         gptAnswerDiv.textContent = "Request failed: " + err.message;
@@ -188,6 +187,7 @@
       transcriptDiv.textContent = "";
       gptAnswerDiv.textContent = "";
       while (!stopLoop) {
+        // 1. Listen (mic open)
         const transcript = await deepgramTranscribeOnceWithTimeout(2000);
         if (stopLoop) break;
         if (!transcript) {
@@ -199,7 +199,11 @@
           break;
         }
         transcriptDiv.textContent = transcript;
-        await askGpt(transcript); // Will wait for TTS to finish before next listen
+        // 2. Get GPT response (mic is closed here)
+        const answer = await askGpt(transcript);
+        // 3. Speak GPT response (mic is still closed)
+        if (answer) await speakTextWithWebSpeech(answer); // Only play TTS after mic is released
+        // 4. Now loop: mic opens again
       }
       startBtn.style.display = "";
       stopBtn.style.display = "none";
