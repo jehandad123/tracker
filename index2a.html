@@ -89,7 +89,6 @@
       audioPlayer.src = audioUrl;
       await audioPlayer.play();
 
-      // Wait for audio to finish before looping
       await new Promise(resolve => {
         audioPlayer.onended = resolve;
         audioPlayer.onerror = resolve;
@@ -134,7 +133,9 @@
       socket.onmessage = async message => {
         const data = JSON.parse(message.data);
         const transcript = data.channel?.alternatives?.[0]?.transcript;
-        if (transcript) {
+        const isFinal = data.is_final;
+
+        if (transcript && isFinal) {
           finalTranscript = transcript;
           transcriptDiv.textContent = transcript;
 
@@ -142,7 +143,7 @@
           silenceTimer = setTimeout(() => {
             resolve(finalTranscript.trim());
             stopListening();
-          }, 1500);
+          }, 2500); // increased from 1500ms to 2500ms
         }
       };
 
