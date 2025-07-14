@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Continuous Voice-to-GPT Q&A</title>
+  <title>Continuous Voice-to-GPT Q&A (No Feedback Loop)</title>
   <style>
     body { font-family: sans-serif; max-width: 500px; margin: 40px auto; }
     input[type=text] { width: 70%; padding: 8px; font-size: 16px; }
@@ -12,7 +12,7 @@
   </style>
 </head>
 <body>
-  <h2>Continuous Voice-to-GPT Q&A</h2>
+  <h2>Continuous Voice-to-GPT Q&A (No Feedback Loop)</h2>
   <div>
     <label>
       Deepgram API Key:
@@ -160,7 +160,7 @@
           return "";
         }
         gptAnswerDiv.textContent = answer || "No response from GPT";
-        if (answer) speakTextWithWebSpeech(answer);
+        if (answer) await speakTextWithWebSpeech(answer); // <-- Await here!
         return answer;
       } catch (err) {
         gptAnswerDiv.textContent = "Request failed: " + err.message;
@@ -169,12 +169,16 @@
     }
 
     function speakTextWithWebSpeech(text) {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.pitch = 1;
-      utter.rate = 1;
-      synth.speak(utter);
+      return new Promise((resolve) => {
+        const synth = window.speechSynthesis;
+        if (!synth) return resolve();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.pitch = 1;
+        utter.rate = 1;
+        utter.onend = resolve;
+        utter.onerror = resolve;
+        synth.speak(utter);
+      });
     }
 
     async function continuousQnALoop() {
@@ -195,7 +199,7 @@
           break;
         }
         transcriptDiv.textContent = transcript;
-        await askGpt(transcript);
+        await askGpt(transcript); // Will wait for TTS to finish before next listen
       }
       startBtn.style.display = "";
       stopBtn.style.display = "none";
