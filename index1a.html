@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Continuous Voice-to-GPT Q&A (iOS Friendly)</title>
+  <title>Smart Hands-Free Voice-to-GPT Q&A</title>
   <style>
     body { font-family: sans-serif; max-width: 500px; margin: 40px auto; }
     input[type=text] { width: 70%; padding: 8px; font-size: 16px; }
@@ -12,7 +12,7 @@
   </style>
 </head>
 <body>
-  <h2>Continuous Voice-to-GPT Q&A (iOS Friendly)</h2>
+  <h2>Smart Hands-Free Voice-to-GPT Q&A</h2>
   <div>
     <label>
       Deepgram API Key:
@@ -27,7 +27,7 @@
     </label>
     <button id="saveOpenAIBtn">Save</button>
   </div>
-  <button id="startBtn">▶️ Start Q&A</button>
+  <button id="startBtn">▶️ Start Hands Free</button>
   <button id="stopBtn" style="display:none;">⏹️ Stop</button>
   <div id="transcript"></div>
   <div id="gptAnswer"></div>
@@ -59,7 +59,6 @@
       gptAnswerDiv.textContent = "";
       let finalTranscript = "";
       let socket, mediaRecorder, stream;
-      let stopped = false;
       let silenceTimer = null;
 
       return new Promise(async (resolve) => {
@@ -91,7 +90,6 @@
               // Reset silence timer on new speech
               if (silenceTimer) clearTimeout(silenceTimer);
               silenceTimer = setTimeout(() => {
-                stopped = true;
                 if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
                 if (socket && socket.readyState === 1) socket.close();
                 if (stream) stream.getTracks().forEach(track => track.stop());
@@ -118,7 +116,6 @@
           }
 
           stopBtn.onclick = () => {
-            stopped = true;
             stopLoop = true;
             if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
             if (socket && socket.readyState === 1) socket.close();
@@ -188,7 +185,13 @@
       gptAnswerDiv.textContent = "";
       while (!stopLoop) {
         // 1. Listen (mic open)
-        const transcript = await deepgramTranscribeOnceWithTimeout(2000);
+        let transcript;
+        try {
+          transcript = await deepgramTranscribeOnceWithTimeout(2000);
+        } catch (e) {
+          transcriptDiv.textContent = "Mic error: " + e.message;
+          break;
+        }
         if (stopLoop) break;
         if (!transcript) {
           transcriptDiv.textContent = "No speech detected. Listening again...";
@@ -200,9 +203,18 @@
         }
         transcriptDiv.textContent = transcript;
         // 2. Get GPT response (mic is closed here)
-        const answer = await askGpt(transcript);
+        let answer = "";
+        try {
+          answer = await askGpt(transcript);
+        } catch (e) {
+          gptAnswerDiv.textContent = "GPT error: " + e.message;
+        }
         // 3. Speak GPT response (mic is still closed)
-        if (answer) await speakTextWithWebSpeech(answer); // Only play TTS after mic is released
+        try {
+          if (answer) await speakTextWithWebSpeech(answer);
+        } catch (e) {
+          gptAnswerDiv.textContent += "\nTTS error: " + e.message;
+        }
         // 4. Now loop: mic opens again
       }
       startBtn.style.display = "";
