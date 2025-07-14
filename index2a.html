@@ -2,51 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Type to GPT and Hear Response</title>
+  <title>Tap to Hear GPT</title>
   <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; }
-    input, textarea { width: 100%; margin: 10px 0; padding: 8px; font-size: 16px; }
-    button { padding: 10px 20px; font-size: 16px; }
-    #gptAnswer { margin-top: 20px; border: 1px solid #ccc; padding: 12px; background: #f3f3f3; min-height: 30px; }
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+    input, textarea { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+    button { padding: 10px 20px; font-size: 16px; margin: 10px 5px 0 0; }
+    #gptAnswer { margin-top: 20px; padding: 12px; background: #f3f3f3; border: 1px solid #ccc; min-height: 30px; }
   </style>
 </head>
 <body>
-  <h2>Type to GPT and Hear Response</h2>
+  <h2>Tap to Hear GPT Response</h2>
+
   <label>
     OpenAI API Key:
     <input type="text" id="apiKey" placeholder="Paste your OpenAI API Key" />
   </label>
+
   <label>
     Your Question:
     <textarea id="inputText" rows="3" placeholder="Type your question here..."></textarea>
   </label>
-  <button id="askBtn">Ask GPT</button>
-  <div id="gptAnswer"></div>
-  <script>
-    function speakTextWithWebSpeech(text) {
-      return new Promise((resolve) => {
-        const synth = window.speechSynthesis;
-        if (!synth) return resolve();
-        synth.cancel();
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.pitch = 1;
-        utter.rate = 1;
-        utter.onend = resolve;
-        utter.onerror = resolve;
-        synth.speak(utter);
-      });
-    }
 
-    document.getElementById('askBtn').onclick = async () => {
-      const apiKey = document.getElementById('apiKey').value.trim();
-      const text = document.getElementById('inputText').value.trim();
-      const gptAnswerDiv = document.getElementById('gptAnswer');
-      gptAnswerDiv.textContent = "";
-      if (!apiKey || !text) {
-        gptAnswerDiv.textContent = "Please enter your API key and a question.";
+  <button id="askBtn">Ask GPT</button>
+  <button id="speakBtn" disabled>🔊 Speak GPT Response</button>
+
+  <div id="gptAnswer"></div>
+
+  <script>
+    const askBtn = document.getElementById("askBtn");
+    const speakBtn = document.getElementById("speakBtn");
+    const apiKeyInput = document.getElementById("apiKey");
+    const inputText = document.getElementById("inputText");
+    const gptAnswerDiv = document.getElementById("gptAnswer");
+
+    let lastGptResponse = "";
+
+    askBtn.onclick = async () => {
+      const apiKey = apiKeyInput.value.trim();
+      const question = inputText.value.trim();
+      if (!apiKey || !question) {
+        alert("Please enter API key and a question.");
         return;
       }
+
       gptAnswerDiv.textContent = "Thinking...";
+      speakBtn.disabled = true;
+
       try {
         const res = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
@@ -57,22 +58,42 @@
           body: JSON.stringify({
             model: "gpt-4o",
             messages: [
-              {role: "system", content: "You are a helpful assistant."},
-              {role: "user", content: text}
+              { role: "system", content: "You are a helpful assistant." },
+              { role: "user", content: question }
             ]
           })
         });
+
         const data = await res.json();
-        let answer = data.choices?.[0]?.message?.content?.trim() || "";
+        const answer = data.choices?.[0]?.message?.content?.trim() || "";
+
         if (data.error) {
           gptAnswerDiv.textContent = "API Error: " + data.error.message;
           return;
         }
-        gptAnswerDiv.textContent = answer || "No response from GPT";
-        if (answer) await speakTextWithWebSpeech(answer);
+
+        lastGptResponse = answer;
+        gptAnswerDiv.textContent = answer;
+        speakBtn.disabled = false;
       } catch (err) {
         gptAnswerDiv.textContent = "Request failed: " + err.message;
       }
+    };
+
+    speakBtn.onclick = () => {
+      if (!lastGptResponse) return;
+      const synth = window.speechSynthesis;
+      if (!synth) {
+        alert("SpeechSynthesis not supported in this browser.");
+        return;
+      }
+
+      synth.cancel(); // cancel any previous speech
+      const utter = new SpeechSynthesisUtterance(lastGptResponse);
+      utter.pitch = 1;
+      utter.rate = 1;
+      utter.voice = synth.getVoices().find(v => v.name === "Samantha") || synth.getVoices()[0];
+      synth.speak(utter);
     };
   </script>
 </body>
