@@ -2,99 +2,172 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Tap to Hear GPT</title>
+  <title>Voice Q&A with OpenAI TTS + Deepgram</title>
   <style>
     body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
-    input, textarea { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+    input, textarea { width: 100%; padding: 8px; margin: 10px 0; font-size: 16px; }
     button { padding: 10px 20px; font-size: 16px; margin: 10px 5px 0 0; }
-    #gptAnswer { margin-top: 20px; padding: 12px; background: #f3f3f3; border: 1px solid #ccc; min-height: 30px; }
+    #transcript, #gptAnswer { margin-top: 20px; padding: 12px; border: 1px solid #ccc; min-height: 40px; background: #f3f3f3; }
+    audio { margin-top: 20px; width: 100%; outline: none; }
   </style>
 </head>
 <body>
-  <h2>Tap to Hear GPT Response</h2>
 
-  <label>
-    OpenAI API Key:
-    <input type="text" id="apiKey" placeholder="Paste your OpenAI API Key" />
-  </label>
+<h2>Voice Q&A with OpenAI TTS + Deepgram</h2>
 
-  <label>
-    Your Question:
-    <textarea id="inputText" rows="3" placeholder="Type your question here..."></textarea>
-  </label>
+<label>
+  OpenAI API Key:
+  <input type="text" id="openaiKey" placeholder="Paste your OpenAI API Key" />
+</label>
+<label>
+  Deepgram API Key:
+  <input type="text" id="deepgramKey" placeholder="Paste your Deepgram API Key" />
+</label>
+<button id="saveKeysBtn">💾 Save Keys</button>
+<span id="saveStatus" style="color:green;display:none;">✔️ Saved!</span>
 
-  <button id="askBtn">Ask GPT</button>
-  <button id="speakBtn" disabled>🔊 Speak GPT Response</button>
+<br /><br />
+<button id="startBtn">🎙️ Start Voice Question</button>
+<button id="stopBtn" disabled>⏹️ Stop</button>
 
-  <div id="gptAnswer"></div>
+<div id="transcript">Transcript will appear here...</div>
+<div id="gptAnswer">GPT response will appear here...</div>
+<audio id="audioPlayer" controls></audio>
 
-  <script>
-    const askBtn = document.getElementById("askBtn");
-    const speakBtn = document.getElementById("speakBtn");
-    const apiKeyInput = document.getElementById("apiKey");
-    const inputText = document.getElementById("inputText");
-    const gptAnswerDiv = document.getElementById("gptAnswer");
+<script>
+  const openaiKeyInput = document.getElementById("openaiKey");
+  const deepgramKeyInput = document.getElementById("deepgramKey");
+  const saveBtn = document.getElementById("saveKeysBtn");
+  const saveStatus = document.getElementById("saveStatus");
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const transcriptDiv = document.getElementById("transcript");
+  const gptAnswerDiv = document.getElementById("gptAnswer");
+  const audioPlayer = document.getElementById("audioPlayer");
 
-    let lastGptResponse = "";
+  // Load saved keys
+  openaiKeyInput.value = localStorage.getItem("openai_api_key") || "";
+  deepgramKeyInput.value = localStorage.getItem("deepgram_api_key") || "";
 
-    askBtn.onclick = async () => {
-      const apiKey = apiKeyInput.value.trim();
-      const question = inputText.value.trim();
-      if (!apiKey || !question) {
-        alert("Please enter API key and a question.");
-        return;
-      }
+  saveBtn.onclick = () => {
+    localStorage.setItem("openai_api_key", openaiKeyInput.value.trim());
+    localStorage.setItem("deepgram_api_key", deepgramKeyInput.value.trim());
+    saveStatus.style.display = "inline";
+    setTimeout(() => saveStatus.style.display = "none", 1500);
+  };
 
-      gptAnswerDiv.textContent = "Thinking...";
-      speakBtn.disabled = true;
+  let socket, mediaRecorder, stream;
+  let stopRequested = false;
 
-      try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + apiKey
-          },
-          body: JSON.stringify({
-            model: "gpt-4o",
-            messages: [
-              { role: "system", content: "You are a helpful assistant." },
-              { role: "user", content: question }
-            ]
-          })
-        });
+  startBtn.onclick = async () => {
+    const dgKey = deepgramKeyInput.value.trim();
+    const openaiKey = openaiKeyInput.value.trim();
+    if (!dgKey || !openaiKey) return alert("Please enter and save both API keys.");
 
-        const data = await res.json();
-        const answer = data.choices?.[0]?.message?.content?.trim() || "";
+    transcriptDiv.textContent = "Listening...";
+    gptAnswerDiv.textContent = "";
+    audioPlayer.src = "";
+    stopRequested = false;
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
 
-        if (data.error) {
-          gptAnswerDiv.textContent = "API Error: " + data.error.message;
-          return;
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    socket = new WebSocket("wss://api.deepgram.com/v1/listen", ["token", dgKey]);
+
+    let finalTranscript = "";
+    let silenceTimer;
+
+    socket.onopen = () => {
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0 && socket.readyState === 1) {
+          socket.send(e.data);
         }
+      };
+      mediaRecorder.start(250);
+    };
 
-        lastGptResponse = answer;
-        gptAnswerDiv.textContent = answer;
-        speakBtn.disabled = false;
-      } catch (err) {
-        gptAnswerDiv.textContent = "Request failed: " + err.message;
+    socket.onmessage = async message => {
+      const data = JSON.parse(message.data);
+      const transcript = data.channel?.alternatives?.[0]?.transcript;
+      if (transcript) {
+        finalTranscript = transcript;
+        transcriptDiv.textContent = transcript;
+
+        if (silenceTimer) clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(async () => {
+          stopListening();
+          if (finalTranscript.trim()) {
+            gptAnswerDiv.textContent = "Thinking...";
+            const gptResponse = await askGpt(openaiKey, finalTranscript);
+            gptAnswerDiv.textContent = gptResponse;
+            const audioUrl = await generateOpenAITTS(openaiKey, gptResponse);
+            audioPlayer.src = audioUrl;
+            audioPlayer.play();
+          }
+        }, 2000);
       }
     };
 
-    speakBtn.onclick = () => {
-      if (!lastGptResponse) return;
-      const synth = window.speechSynthesis;
-      if (!synth) {
-        alert("SpeechSynthesis not supported in this browser.");
-        return;
-      }
-
-      synth.cancel(); // cancel any previous speech
-      const utter = new SpeechSynthesisUtterance(lastGptResponse);
-      utter.pitch = 1;
-      utter.rate = 1;
-      utter.voice = synth.getVoices().find(v => v.name === "Samantha") || synth.getVoices()[0];
-      synth.speak(utter);
+    socket.onerror = err => {
+      transcriptDiv.textContent = "WebSocket error: " + err.message;
+      stopListening();
     };
-  </script>
+
+    stopBtn.onclick = stopListening;
+  };
+
+  function stopListening() {
+    stopRequested = true;
+    if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (socket && socket.readyState === 1) socket.close();
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    transcriptDiv.textContent = "Stopped.";
+  }
+
+  async function askGpt(apiKey, userText) {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "You are a helpful assistant." },
+          { role: "user", content: userText }
+        ]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    return data.choices[0].message.content.trim();
+  }
+
+  async function generateOpenAITTS(apiKey, text) {
+    const res = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "tts-1",
+        input: text,
+        voice: "nova" // or "alloy", "fable", "shimmer", "onyx", "echo", "coral"
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || res.statusText);
+    }
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  }
+</script>
+
 </body>
 </html>
