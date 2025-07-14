@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Voice Q&A with OpenAI TTS + Deepgram</title>
+  <title>Continuous Voice GPT with OpenAI TTS</title>
   <style>
     body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
     input, textarea { width: 100%; padding: 8px; margin: 10px 0; font-size: 16px; }
@@ -13,7 +13,7 @@
 </head>
 <body>
 
-<h2>Voice Q&A with OpenAI TTS + Deepgram</h2>
+<h2>Continuous Voice GPT with OpenAI TTS</h2>
 
 <label>
   OpenAI API Key:
@@ -27,7 +27,7 @@
 <span id="saveStatus" style="color:green;display:none;">✔️ Saved!</span>
 
 <br /><br />
-<button id="startBtn">🎙️ Start Voice Question</button>
+<button id="startBtn">▶️ Start Conversation</button>
 <button id="stopBtn" disabled>⏹️ Stop</button>
 
 <div id="transcript">Transcript will appear here...</div>
@@ -45,7 +45,6 @@
   const gptAnswerDiv = document.getElementById("gptAnswer");
   const audioPlayer = document.getElementById("audioPlayer");
 
-  // Load saved keys
   openaiKeyInput.value = localStorage.getItem("openai_api_key") || "";
   deepgramKeyInput.value = localStorage.getItem("deepgram_api_key") || "";
 
@@ -64,67 +63,99 @@
     const openaiKey = openaiKeyInput.value.trim();
     if (!dgKey || !openaiKey) return alert("Please enter and save both API keys.");
 
-    transcriptDiv.textContent = "Listening...";
-    gptAnswerDiv.textContent = "";
-    audioPlayer.src = "";
     stopRequested = false;
     startBtn.disabled = true;
     stopBtn.disabled = false;
+    transcriptDiv.textContent = "";
+    gptAnswerDiv.textContent = "";
+    audioPlayer.src = "";
 
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
-    socket = new WebSocket("wss://api.deepgram.com/v1/listen", ["token", dgKey]);
+    while (!stopRequested) {
+      const transcript = await listenOnceWithDeepgram(dgKey);
+      if (!transcript || stopRequested) break;
 
-    let finalTranscript = "";
-    let silenceTimer;
+      transcriptDiv.textContent = "You said: " + transcript;
 
-    socket.onopen = () => {
-      mediaRecorder.ondataavailable = e => {
-        if (e.data.size > 0 && socket.readyState === 1) {
-          socket.send(e.data);
-        }
-      };
-      mediaRecorder.start(250);
-    };
-
-    socket.onmessage = async message => {
-      const data = JSON.parse(message.data);
-      const transcript = data.channel?.alternatives?.[0]?.transcript;
-      if (transcript) {
-        finalTranscript = transcript;
-        transcriptDiv.textContent = transcript;
-
-        if (silenceTimer) clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(async () => {
-          stopListening();
-          if (finalTranscript.trim()) {
-            gptAnswerDiv.textContent = "Thinking...";
-            const gptResponse = await askGpt(openaiKey, finalTranscript);
-            gptAnswerDiv.textContent = gptResponse;
-            const audioUrl = await generateOpenAITTS(openaiKey, gptResponse);
-            audioPlayer.src = audioUrl;
-            audioPlayer.play();
-          }
-        }, 2000);
+      if (/^(stop|exit|cancel|goodbye)$/i.test(transcript.trim())) {
+        gptAnswerDiv.textContent = "Conversation ended.";
+        break;
       }
-    };
 
-    socket.onerror = err => {
-      transcriptDiv.textContent = "WebSocket error: " + err.message;
-      stopListening();
-    };
+      gptAnswerDiv.textContent = "Thinking...";
+      const gptResponse = await askGpt(openaiKey, transcript);
+      gptAnswerDiv.textContent = gptResponse;
 
-    stopBtn.onclick = stopListening;
+      const audioUrl = await generateOpenAITTS(openaiKey, gptResponse);
+      audioPlayer.src = audioUrl;
+      await audioPlayer.play();
+
+      // Wait for audio to finish before looping
+      await new Promise(resolve => {
+        audioPlayer.onended = resolve;
+        audioPlayer.onerror = resolve;
+      });
+    }
+
+    stopListening();
+  };
+
+  stopBtn.onclick = () => {
+    stopRequested = true;
+    stopListening();
   };
 
   function stopListening() {
-    stopRequested = true;
     if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
     if (stream) stream.getTracks().forEach(t => t.stop());
     if (socket && socket.readyState === 1) socket.close();
     startBtn.disabled = false;
     stopBtn.disabled = true;
     transcriptDiv.textContent = "Stopped.";
+  }
+
+  async function listenOnceWithDeepgram(dgKey) {
+    return new Promise(async (resolve) => {
+      let finalTranscript = "";
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      socket = new WebSocket("wss://api.deepgram.com/v1/listen", ["token", dgKey]);
+
+      let silenceTimer;
+
+      socket.onopen = () => {
+        mediaRecorder.ondataavailable = e => {
+          if (e.data.size > 0 && socket.readyState === 1) {
+            socket.send(e.data);
+          }
+        };
+        mediaRecorder.start(250);
+      };
+
+      socket.onmessage = async message => {
+        const data = JSON.parse(message.data);
+        const transcript = data.channel?.alternatives?.[0]?.transcript;
+        if (transcript) {
+          finalTranscript = transcript;
+          transcriptDiv.textContent = transcript;
+
+          if (silenceTimer) clearTimeout(silenceTimer);
+          silenceTimer = setTimeout(() => {
+            resolve(finalTranscript.trim());
+            stopListening();
+          }, 1500);
+        }
+      };
+
+      socket.onerror = err => {
+        transcriptDiv.textContent = "WebSocket error: " + err.message;
+        resolve("");
+      };
+
+      stopBtn.onclick = () => {
+        stopRequested = true;
+        resolve("");
+      };
+    });
   }
 
   async function askGpt(apiKey, userText) {
@@ -157,7 +188,7 @@
       body: JSON.stringify({
         model: "tts-1",
         input: text,
-        voice: "nova" // or "alloy", "fable", "shimmer", "onyx", "echo", "coral"
+        voice: "nova" // fast and natural
       })
     });
     if (!res.ok) {
