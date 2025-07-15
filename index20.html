@@ -411,16 +411,17 @@
         playBeep();
         await sleep(250); // Let beep finish before starting mic
         transcriptDiv.textContent = "Listening...";
-        let userInput = await listenOnceWithSilenceDetection(handsFreeBtn);
+       let userInput = await listenOnceWithSilenceDetection(handsFreeBtn);
 
-        // Handle empty or failed STT
-        if (!userInput || !userInput.trim()) {
-          await speakTextWithWebSpeech("Sorry, can you repeat please.");
-          await sleep(400);
-          playBeep();
-          await sleep(250);
-          continue;
-        }
+// Handle empty or failed STT
+if (!userInput || !userInput.trim()) {
+  transcriptDiv.textContent = "No clear input. Listening again...";
+  await sleep(400);
+  playBeep();
+  await sleep(250);
+  continue;
+}
+
 
         // Handle stop voice command
         if (/^(stop|disconnect|goodbye|exit|cancel)$/i.test(userInput.trim())) {
