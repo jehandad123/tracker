@@ -790,30 +790,38 @@ if (!userInput || !userInput.trim()) {
   
 
     // Interruptible TTS
-    function speakTextWithWebSpeech(text) {
-      return new Promise((resolve) => {
-        const synth = window.speechSynthesis;
-        if (!synth) {
-          alert("Speech Synthesis not supported in this browser.");
-          resolve();
-          return;
-        }
-        ttsSpeaking = true;
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.voice = getBestVoice();
-        utter.pitch = 1;
-        utter.rate = 0.97;
-        utter.onend = () => {
-          ttsSpeaking = false;
-          resolve();
-        };
-        utter.onerror = () => {
-          ttsSpeaking = false;
-          resolve();
-        };
-        synth.speak(utter);
-      });
+   function speakTextWithWebSpeech(text) {
+  return new Promise((resolve) => {
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      alert("Speech Synthesis not supported in this browser.");
+      resolve();
+      return;
     }
+
+    // Wait for voices to load if needed
+    const speak = () => {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.voice = getBestVoice();
+      utter.pitch = 1;
+      utter.rate = 0.97;
+      utter.onend = () => resolve();
+      utter.onerror = () => resolve();
+      synth.speak(utter);
+    };
+
+    if (speechSynthesis.getVoices().length === 0) {
+      // Voices not loaded yet
+      speechSynthesis.onvoiceschanged = () => {
+        speak();
+      };
+    } else {
+      // Voices already loaded
+      speak();
+    }
+  });
+}
+
 
     function getAllTasks() {
       const allTasks = [];
