@@ -591,15 +591,19 @@
         });
         const data = await pollingRes.json();
 
-        if (data.status === "completed") {
-          if (!data.text || data.text.trim().split(" ").length < 2) {
-            transcriptDiv.textContent = "Too short or unclear. Ignored.";
-            return;
-          }
-          transcriptDiv.textContent = data.text;
-          await callback(data.text);
-          completed = true;
-        } else if (data.status === "failed") {
+ if (data.status === "completed") {
+  if (!data.text || data.text.trim().split(" ").length < 2) {
+    transcriptDiv.textContent = "Too short or unclear. Ignored.";
+    await callback(""); // Call callback with empty string to continue
+    completed = true;
+    return;
+  }
+  transcriptDiv.textContent = data.text;
+  await callback(data.text);
+  completed = true;
+}
+
+        else if (data.status === "failed") {
           transcriptDiv.textContent = "Transcription failed.";
           completed = true;
         } else {
