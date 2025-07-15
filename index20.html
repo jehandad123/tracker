@@ -126,8 +126,8 @@
 
   <script>
     // ====== CONFIG ======
-    const SILENCE_THRESHOLD = 0.03;
-    const SILENCE_DURATION = 2000; // 2 seconds
+    const SILENCE_THRESHOLD = 0.05;
+    const SILENCE_DURATION = 3000; // 3 seconds
     const MIC_THRESHOLD = 0.03; // Adjust for noise sensitivity
 
     // ====== NEW BEEP FUNCTION (Web Audio API) ======
@@ -491,104 +491,126 @@
       interruptTTSBtn.style.display = "none";
       muteMicBtn.style.display = "none";
     }
+
     async function listenWithSilenceDetection(callback, buttonElem) {
-      const ASSEMBLYAI_API_KEY = getAssemblyKey();
-      if (!ASSEMBLYAI_API_KEY) {
-        alert("Please enter and save your AssemblyAI API key.");
-        return;
-      }
-      isRecording = true;
-      audioChunks = [];
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.start();
-      buttonElem.textContent = "⏹️ Stop Recording";
-      buttonElem.classList.add("recording");
+  const ASSEMBLYAI_API_KEY = getAssemblyKey();
+  if (!ASSEMBLYAI_API_KEY) {
+    alert("Please enter and save your AssemblyAI API key.");
+    return;
+  }
 
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      source = audioContext.createMediaStreamSource(stream);
-      analyser = audioContext.createAnalyser();
-      source.connect(analyser);
-      analyser.fftSize = 2048;
-      const data = new Uint8Array(analyser.fftSize);
+  const SILENCE_THRESHOLD = 0.05;         // Less sensitive to background noise
+  const SILENCE_DURATION = 3000;          // Wait 3 seconds of silence before stopping
+  const MIN_RECORDING_DURATION = 1500;    // Must record at least 1.5 seconds
 
-      function checkSilence() {
-        analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) {
-          const normalized = (data[i] - 128) / 128;
-          sum += normalized * normalized;
-        }
-        const volume = Math.sqrt(sum / data.length);
-        if (volume < SILENCE_THRESHOLD) {
-          if (!silenceTimeout) {
-            silenceTimeout = setTimeout(() => {
-              if (isRecording) {
-                mediaRecorder.stop();
-                cleanupAudio();
-              }
-            }, SILENCE_DURATION);
-          }
-        } else {
-          if (silenceTimeout) {
-            clearTimeout(silenceTimeout);
-            silenceTimeout = null;
-          }
-        }
-        if (isRecording) {
-          requestAnimationFrame(checkSilence);
-        }
-      }
-      requestAnimationFrame(checkSilence);
+  isRecording = true;
+  audioChunks = [];
+  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.start();
+  const recordingStartTime = Date.now();
 
-      mediaRecorder.ondataavailable = e => {
-        audioChunks.push(e.data);
-      };
+  buttonElem.textContent = "⏹️ Stop Recording";
+  buttonElem.classList.add("recording");
 
-      mediaRecorder.onstop = async () => {
-        isRecording = false;
-        buttonElem.textContent = buttonElem === speakBtn ? "🎙️ Speak" : "🤖 Hands Free";
-        buttonElem.classList.remove("recording");
-        cleanupAudio();
-        transcriptDiv.textContent = "Uploading and transcribing...";
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        const uploadRes = await fetch("https://api.assemblyai.com/v2/upload", {
-          method: "POST",
-          headers: { "authorization": ASSEMBLYAI_API_KEY },
-          body: audioBlob
-        });
-        const { upload_url } = await uploadRes.json();
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  source = audioContext.createMediaStreamSource(stream);
+  analyser = audioContext.createAnalyser();
+  source.connect(analyser);
+  analyser.fftSize = 2048;
+  const data = new Uint8Array(analyser.fftSize);
 
-        const transcriptRes = await fetch("https://api.assemblyai.com/v2/transcript", {
-          method: "POST",
-          headers: {
-            "authorization": ASSEMBLYAI_API_KEY,
-            "content-type": "application/json"
-          },
-          body: JSON.stringify({ audio_url: upload_url })
-        });
-        const { id } = await transcriptRes.json();
-
-        let completed = false;
-        while (!completed) {
-          await new Promise(res => setTimeout(res, 2000));
-          const pollingRes = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
-            headers: { "authorization": ASSEMBLYAI_API_KEY }
-          });
-          const data = await pollingRes.json();
-          if (data.status === "completed") {
-            transcriptDiv.textContent = data.text;
-            await callback(data.text);
-            completed = true;
-          } else if (data.status === "failed") {
-            transcriptDiv.textContent = "Transcription failed.";
-            completed = true;
-          } else {
-            transcriptDiv.textContent = "Transcribing...";
-          }
-        }
-      };
+  function checkSilence() {
+    analyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+      const normalized = (data[i] - 128) / 128;
+      sum += normalized * normalized;
     }
+    const volume = Math.sqrt(sum / data.length);
+
+    if (volume < SILENCE_THRESHOLD) {
+      if (!silenceTimeout && Date.now() - recordingStartTime > MIN_RECORDING_DURATION) {
+        silenceTimeout = setTimeout(() => {
+          if (isRecording) {
+            mediaRecorder.stop();
+            cleanupAudio();
+          }
+        }, SILENCE_DURATION);
+      }
+    } else {
+      if (silenceTimeout) {
+        clearTimeout(silenceTimeout);
+        silenceTimeout = null;
+      }
+    }
+
+    if (isRecording) {
+      requestAnimationFrame(checkSilence);
+    }
+  }
+
+  requestAnimationFrame(checkSilence);
+
+  mediaRecorder.ondataavailable = e => {
+    audioChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = async () => {
+    isRecording = false;
+    buttonElem.textContent = buttonElem === speakBtn ? "🎙️ Speak" : "🤖 Hands Free";
+    buttonElem.classList.remove("recording");
+    cleanupAudio();
+
+    transcriptDiv.textContent = "Uploading and transcribing...";
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+
+    try {
+      const uploadRes = await fetch("https://api.assemblyai.com/v2/upload", {
+        method: "POST",
+        headers: { "authorization": ASSEMBLYAI_API_KEY },
+        body: audioBlob
+      });
+      const { upload_url } = await uploadRes.json();
+
+      const transcriptRes = await fetch("https://api.assemblyai.com/v2/transcript", {
+        method: "POST",
+        headers: {
+          "authorization": ASSEMBLYAI_API_KEY,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({ audio_url: upload_url })
+      });
+      const { id } = await transcriptRes.json();
+
+      let completed = false;
+      while (!completed) {
+        await new Promise(res => setTimeout(res, 2000));
+        const pollingRes = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
+          headers: { "authorization": ASSEMBLYAI_API_KEY }
+        });
+        const data = await pollingRes.json();
+
+        if (data.status === "completed") {
+          if (!data.text || data.text.trim().split(" ").length < 2) {
+            transcriptDiv.textContent = "Too short or unclear. Ignored.";
+            return;
+          }
+          transcriptDiv.textContent = data.text;
+          await callback(data.text);
+          completed = true;
+        } else if (data.status === "failed") {
+          transcriptDiv.textContent = "Transcription failed.";
+          completed = true;
+        } else {
+          transcriptDiv.textContent = "Transcribing...";
+        }
+      }
+    } catch (err) {
+      transcriptDiv.textContent = "Error: " + err.message;
+    }
+  };
+}
 
     async function listenOnceWithSilenceDetection(buttonElem) {
       return new Promise(resolve => {
