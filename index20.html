@@ -86,6 +86,10 @@
     <button id="saveKeysBtn">Save API Keys</button>
     <span id="apiKeySaved" style="color: green; display: none;">✔️ Saved!</span>
   </div>
+  <div style="margin-top: 10px;">
+  <label for="voiceSelect">Choose Voice:</label>
+  <select id="voiceSelect"></select>
+</div>
   <button id="speakBtn">🎙️ Speak</button>
   <button id="handsFreeBtn">🤖 Hands Free</button>
   <button id="stopBtn" style="display:none;">⏹️ Stop Conversation</button>
@@ -747,47 +751,46 @@ if (!userInput || !userInput.trim()) {
         return "Request failed: " + err.message;
       }
     }
+// JD start
+function populateVoiceList() {
+  const select = document.getElementById('voiceSelect');
+  if (!select) return;
 
-    // Platform-specific voice selection
-   function getBestVoice() {
   const voices = speechSynthesis.getVoices();
+  select.innerHTML = ''; // Clear existing options
 
-  // Try to find Matilda Premium first
-  const matildaPremium = voices.find(v =>
-    v.name === "Matilda" &&
-    v.localService &&
-    v.voiceURI.toLowerCase().includes("premium")
-  );
-  if (matildaPremium) return matildaPremium;
+  voices.forEach((voice, index) => {
+    const option = document.createElement('option');
+    option.value = index;
+    option.textContent = `${voice.name} (${voice.lang})${voice.localService ? ' [local]' : ''}`;
+    select.appendChild(option);
+  });
 
-  // Fallback to any Matilda
-  const matilda = voices.find(v => v.name === "Matilda");
-  if (matilda) return matilda;
-
-  // Fallback to Samantha on iOS
-  const ua = navigator.userAgent;
-  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-  if (isIOS) {
-    const samantha = voices.find(v => v.name === "Samantha");
-    if (samantha) return samantha;
+  // Try to auto-select Matilda if available
+  const matildaIndex = voices.findIndex(v => v.name === "Matilda");
+  if (matildaIndex !== -1) {
+    select.value = matildaIndex;
   }
+}
 
-  // Fallback to Microsoft voices on Windows
-  if (ua.includes("Windows")) {
-    const david = voices.find(v => v.name === "Microsoft David");
-    const zira = voices.find(v => v.name === "Microsoft Zira");
-    return david || zira || voices[0];
+// Ensure voices are loaded
+speechSynthesis.onvoiceschanged = populateVoiceList;
+window.addEventListener("load", populateVoiceList);
+    // JD end
+    // Platform-specific voice selection
+
+    //JD start
+function getBestVoice() {
+  const voices = speechSynthesis.getVoices();
+  const select = document.getElementById("voiceSelect");
+  if (select && voices.length > 0) {
+    const selectedIndex = parseInt(select.value, 10);
+    return voices[selectedIndex] || voices[0];
   }
-
-  // Fallback to first female voice
-  const female = voices.find(v => v.gender === "female");
-  if (female) return female;
-
-  // Fallback to any available voice
   return voices[0];
 }
 
-  
+  //JD end
 
     // Interruptible TTS
    function speakTextWithWebSpeech(text) {
