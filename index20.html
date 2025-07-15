@@ -749,21 +749,44 @@ if (!userInput || !userInput.trim()) {
     }
 
     // Platform-specific voice selection
-    function getBestVoice() {
-      const voices = window.speechSynthesis.getVoices();
-      const ua = navigator.userAgent;
-      const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-      if (isIOS) {
-        return voices.find(v => v.name === "Alex") ||
-               voices.find(v => v.name === "Samantha") ||
-               voices[0];
-      } else if (ua.indexOf("Windows") !== -1) {
-        return voices.find(v => v.name === "Microsoft David") ||
-               voices.find(v => v.name === "Microsoft Zira") ||
-               voices[0];
-      } else {
-        return voices[0];
-      }
+   function getBestVoice() {
+  const voices = speechSynthesis.getVoices();
+
+  // Try to find Matilda Premium first
+  const matildaPremium = voices.find(v =>
+    v.name === "Matilda" &&
+    v.localService &&
+    v.voiceURI.toLowerCase().includes("premium")
+  );
+  if (matildaPremium) return matildaPremium;
+
+  // Fallback to any Matilda
+  const matilda = voices.find(v => v.name === "Matilda");
+  if (matilda) return matilda;
+
+  // Fallback to Samantha on iOS
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  if (isIOS) {
+    const samantha = voices.find(v => v.name === "Samantha");
+    if (samantha) return samantha;
+  }
+
+  // Fallback to Microsoft voices on Windows
+  if (ua.includes("Windows")) {
+    const david = voices.find(v => v.name === "Microsoft David");
+    const zira = voices.find(v => v.name === "Microsoft Zira");
+    return david || zira || voices[0];
+  }
+
+  // Fallback to first female voice
+  const female = voices.find(v => v.gender === "female");
+  if (female) return female;
+
+  // Fallback to any available voice
+  return voices[0];
+}
+
     }
 
     // Interruptible TTS
