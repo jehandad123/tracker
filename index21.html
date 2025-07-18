@@ -272,7 +272,13 @@ function handleSpecialCommands(inputText) {
     }
     return true;
   }
+function tryAddOrCommand(inputText) {
+  if (!handleSpecialCommands(inputText)) {
+    addTask(inputText);
+  }
+}
 
+  
   m = inputText.match(/edit\s+task\s+(\d+)\s+(\w+)\s+to\s+(.+)/i);
   if (m) {
     const taskNumber = parseInt(m[1], 10) - 1;
@@ -340,10 +346,10 @@ function handleSpecialCommands(inputText) {
     }
 
     addManualBtn.onclick = () => {
-      const inputText = manualInput.value;
-     if (!handleSpecialCommands(inputText)) {
-  addTask(inputText);
-}
+  const inputText = manualInput.value;
+  tryAddOrCommand(inputText);
+  manualInput.value = "";
+};
 
       manualInput.value = "";
     };
@@ -392,7 +398,7 @@ function handleSpecialCommands(inputText) {
       playBeep();
       await sleep(250); // Let beep finish before starting mic
       await listenWithSilenceDetection(async (transcript) => {
-        addTask(transcript);
+      tryAddOrCommand(transcript);
         transcriptDiv.textContent += " → Task added.";
         gptAnswer.textContent = "";
       }, speakBtn);
