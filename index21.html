@@ -272,12 +272,6 @@ function handleSpecialCommands(inputText) {
     }
     return true;
   }
-function tryAddOrCommand(inputText) {
-  if (!handleSpecialCommands(inputText)) {
-    addTask(inputText);
-  }
-}
-
   
   m = inputText.match(/edit\s+task\s+(\d+)\s+(\w+)\s+to\s+(.+)/i);
   if (m) {
@@ -301,6 +295,12 @@ function tryAddOrCommand(inputText) {
   }
 
   return false;
+}
+
+    function tryAddOrCommand(inputText) {
+  if (!handleSpecialCommands(inputText)) {
+    addTask(inputText);
+  }
 }
 
 // Then your original function follows:
@@ -351,8 +351,7 @@ function tryAddOrCommand(inputText) {
   manualInput.value = "";
 };
 
-      manualInput.value = "";
-    };
+     
 
     // ====== BACKUP/RESTORE ======
     exportTasksBtn.onclick = function() {
