@@ -743,22 +743,37 @@ silenceTimeout = setTimeout(() => {
       }
       gptAnswer.textContent = "";
       const tasks = getAllTasks();
-      const prompt = `Here are my tasks:\n${tasks.map(t => `- [${t.category}] ${t.text}${t.date ? " (" + t.date.slice(0,10) + ")" : ""}`).join('\n')}\n\nUser question: ${userQuestion}\n\nAnswer in a clear, concise way. If dates are mentioned, use the task dates to filter.`;
+let maxTokens = 200; // ✅ Keep answers short by default
+
+// Check if the user is asking for a detailed task list
+if (/list all|show all|everything|all tasks|in category/i.test(userQuestion)) {
+  maxTokens = 1000; // ✅ Allow longer replies
+  prompt += "\nPlease provide a full, detailed list if applicable.";  // Optional: enhance GPT behavior
+}
+      
+let prompt = `Here are my tasks:\n${tasks.map(t => `- [${t.category}] ${t.text}${t.date ? " (" + t.date.slice(0,10) + ")" : ""}`).join('\n')}
+
+User question: ${userQuestion}
+
+Answer in 1–2 short sentences. Only give a full list or long explanation if I specifically ask for "all tasks" or a full breakdown.`;
+            
       try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + OPENAI_API_KEY
-          },
-          body: JSON.stringify({
-            model: "gpt-4o",
-            messages: [
-              {role: "system", content: "You are a helpful personal task assistant."},
-              {role: "user", content: prompt}
-            ]
-          })
-        });
+const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + OPENAI_API_KEY
+  },
+  body: JSON.stringify({
+    model: "gpt-4o",
+    messages: [
+      {role: "system", content: "You are a helpful personal task assistant."},
+      {role: "user", content: prompt}
+    ],
+    max_tokens: maxTokens   // ✅ This line controls GPT's length
+  })
+});
+        
         const data = await res.json();
         let answer = "";
         if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
