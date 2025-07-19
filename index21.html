@@ -546,7 +546,7 @@ function checkSilence() {
     sum += normalized * normalized;
   }
   const volume = Math.sqrt(sum / data.length);
-
+const SILENCE_THRESHOLD = Number(document.getElementById("silenceThresholdInput").value) || 0.05;
   // ✅ Debounced detection logic
   if (volume > SILENCE_THRESHOLD) {
     activeFrameCount++;
