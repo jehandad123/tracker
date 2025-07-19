@@ -562,12 +562,15 @@ const SILENCE_THRESHOLD = Number(document.getElementById("silenceThresholdInput"
 
     // Quit if silence is held long enough
     if (!silenceTimeout && Date.now() - recordingStartTime > MIN_RECORDING_DURATION) {
-      silenceTimeout = setTimeout(() => {
-        if (isRecording) {
-          mediaRecorder.stop();
-          cleanupAudio();
-        }
-      }, SILENCE_DURATION);
+     const silenceMs = Number(document.getElementById("silenceDurationInput").value) || 3000;
+
+silenceTimeout = setTimeout(() => {
+  if (isRecording) {
+    mediaRecorder.stop();
+    cleanupAudio();
+  }
+}, silenceMs);
+
     }
   }
 
