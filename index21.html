@@ -145,6 +145,7 @@
     const SILENCE_THRESHOLD = Number(document.getElementById("silenceThresholdInput").value) || 0.05;
 const SILENCE_DURATION = Number(document.getElementById("silenceDurationInput").value) || 3000;
     const MIC_THRESHOLD = 0.03; // Adjust for noise sensitivity
+const REQUIRED_ACTIVE_FRAMES = 5; // ✅ How many frames need to be "loud" to trigger speaking
 
     // ====== NEW BEEP FUNCTION (Web Audio API) ======
     function playBeep(frequency = 1500, duration = 120) {
@@ -526,7 +527,7 @@ if (!userInput || !userInput.trim()) {
   mediaRecorder = new MediaRecorder(stream);
   mediaRecorder.start();
   const recordingStartTime = Date.now();
-
+let activeFrameCount = 0; // ✅ Add here
   buttonElem.textContent = "⏹️ Stop Recording";
   buttonElem.classList.add("recording");
 
@@ -537,35 +538,44 @@ if (!userInput || !userInput.trim()) {
   analyser.fftSize = 2048;
   const data = new Uint8Array(analyser.fftSize);
 
-  function checkSilence() {
-    analyser.getByteTimeDomainData(data);
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) {
-      const normalized = (data[i] - 128) / 128;
-      sum += normalized * normalized;
-    }
-    const volume = Math.sqrt(sum / data.length);
+function checkSilence() {
+  analyser.getByteTimeDomainData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) {
+    const normalized = (data[i] - 128) / 128;
+    sum += normalized * normalized;
+  }
+  const volume = Math.sqrt(sum / data.length);
 
-    if (volume < SILENCE_THRESHOLD) {
-      if (!silenceTimeout && Date.now() - recordingStartTime > MIN_RECORDING_DURATION) {
-        silenceTimeout = setTimeout(() => {
-          if (isRecording) {
-            mediaRecorder.stop();
-            cleanupAudio();
-          }
-        }, SILENCE_DURATION);
-      }
-    } else {
+  // ✅ Debounced detection logic
+  if (volume > SILENCE_THRESHOLD) {
+    activeFrameCount++;
+    if (activeFrameCount >= REQUIRED_ACTIVE_FRAMES) {
+      // Real speech detected; cancel any scheduled stop
       if (silenceTimeout) {
         clearTimeout(silenceTimeout);
         silenceTimeout = null;
       }
     }
+  } else {
+    activeFrameCount = 0;
 
-    if (isRecording) {
-      requestAnimationFrame(checkSilence);
+    // Quit if silence is held long enough
+    if (!silenceTimeout && Date.now() - recordingStartTime > MIN_RECORDING_DURATION) {
+      silenceTimeout = setTimeout(() => {
+        if (isRecording) {
+          mediaRecorder.stop();
+          cleanupAudio();
+        }
+      }, SILENCE_DURATION);
     }
   }
+
+  if (isRecording) {
+    requestAnimationFrame(checkSilence);
+  }
+}
+
 
   requestAnimationFrame(checkSilence);
 
