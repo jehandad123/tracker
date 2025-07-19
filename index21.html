@@ -92,6 +92,9 @@
 </div>
   <button id="speakBtn">🎙️ Speak</button>
   <button id="handsFreeBtn">🤖 Hands Free</button>
+    <button id="stopBtn" style="display:none;">⏹️ Stop Conversation</button>
+  <button id="interruptTTSBtn" style="display:none;">⏹️ Interrupt Voice</button>
+  <button id="muteMicBtn" style="display:none;">🔇 Mute Mic</button>
   <!-- 🎚️ Silence Threshold / Duration Controls -->
 <div style="margin-top: 16px;">
   <label>
@@ -103,9 +106,7 @@
     <input type="number" id="silenceDurationInput" min="500" max="10000" step="100" value="3000" />
   </label>
 </div>
-  <button id="stopBtn" style="display:none;">⏹️ Stop Conversation</button>
-  <button id="interruptTTSBtn" style="display:none;">⏹️ Interrupt Voice</button>
-  <button id="muteMicBtn" style="display:none;">🔇 Mute Mic</button>
+
   <span id="gptLoading">Thinking...</span>
   <div id="transcript"></div>
   <div id="gptAnswer"></div>
