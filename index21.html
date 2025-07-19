@@ -86,15 +86,30 @@
     <button id="saveKeysBtn">Save API Keys</button>
     <span id="apiKeySaved" style="color: green; display: none;">✔️ Saved!</span>
   </div>
+  <div style="margin-top: 10px;">
+  <label for="voiceSelect">Choose Voice:</label>
+  <select id="voiceSelect"></select>
+</div>
   <button id="speakBtn">🎙️ Speak</button>
   <button id="handsFreeBtn">🤖 Hands Free</button>
+  <!-- 🎚️ Silence Threshold / Duration Controls -->
+<div style="margin-top: 16px;">
+  <label>
+    Silence Threshold:
+    <input type="number" id="silenceThresholdInput" min="0.001" max="0.2" step="0.001" value="0.05" />
+  </label>
+  <label style="margin-left: 10px;">
+    Silence Duration (ms):
+    <input type="number" id="silenceDurationInput" min="500" max="10000" step="100" value="3000" />
+  </label>
+</div>
   <button id="stopBtn" style="display:none;">⏹️ Stop Conversation</button>
   <button id="interruptTTSBtn" style="display:none;">⏹️ Interrupt Voice</button>
   <button id="muteMicBtn" style="display:none;">🔇 Mute Mic</button>
   <span id="gptLoading">Thinking...</span>
   <div id="transcript"></div>
   <div id="gptAnswer"></div>
-
+  
   <h2>Task Manager with Voice and Manual Input</h2>
   <div class="task-input">
     <input type="text" id="manualInput" placeholder="Enter task and category at end (e.g. Buy milk Shop)" />
@@ -126,8 +141,8 @@
 
   <script>
     // ====== CONFIG ======
-    const SILENCE_THRESHOLD = 0.03;
-    const SILENCE_DURATION = 2000; // 2 seconds
+    const SILENCE_THRESHOLD = Number(document.getElementById("silenceThresholdInput").value) || 0.05;
+const SILENCE_DURATION = Number(document.getElementById("silenceDurationInput").value) || 3000;
     const MIC_THRESHOLD = 0.03; // Adjust for noise sensitivity
 
     // ====== NEW BEEP FUNCTION (Web Audio API) ======
@@ -255,56 +270,6 @@
       saveTasks(category, tasks);
     }
 
-// 👇 INSERT THIS FIRST — right above your addTask() function!
-function handleSpecialCommands(inputText) {
-  let m = inputText.match(/delete\s+task\s+(\d+)\s+from\s+(\w+)/i);
-  if (m) {
-    const taskNumber = parseInt(m[1], 10) - 1;
-    const category = m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase();
-    const tasks = JSON.parse(localStorage.getItem(category)) || [];
-    if (taskNumber >= 0 && taskNumber < tasks.length) {
-      tasks.splice(taskNumber, 1);
-      localStorage.setItem(category, JSON.stringify(tasks));
-      loadTasks();
-      speakTextWithWebSpeech(`Task ${m[1]} deleted from ${category}`);
-    } else {
-      speakTextWithWebSpeech(`Task number ${m[1]} not found in ${category}`);
-    }
-    return true;
-  }
-  
-  m = inputText.match(/edit\s+task\s+(\d+)\s+(\w+)\s+to\s+(.+)/i);
-  if (m) {
-    const taskNumber = parseInt(m[1], 10) - 1;
-    const category = m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase();
-    const newText = m[3].trim();
-    const tasks = JSON.parse(localStorage.getItem(category)) || [];
-    if (taskNumber >= 0 && taskNumber < tasks.length) {
-      const parsedDate = chrono.parseDate(newText);
-      tasks[taskNumber] = {
-        text: newText,
-        date: parsedDate ? parsedDate.toISOString() : null,
-      };
-      localStorage.setItem(category, JSON.stringify(tasks));
-      loadTasks();
-      speakTextWithWebSpeech(`Task ${m[1]} updated in ${category}`);
-    } else {
-      speakTextWithWebSpeech(`Task number ${m[1]} not found in ${category}`);
-    }
-    return true;
-  }
-
-  return false;
-}
-
-    function tryAddOrCommand(inputText) {
-  if (!handleSpecialCommands(inputText)) {
-    addTask(inputText);
-  }
-}
-
-// Then your original function follows:
-
     function addTask(inputText) {
       const cleaned = preprocessInput(inputText);
       const words = cleaned.trim().split(" ");
@@ -346,12 +311,10 @@ function handleSpecialCommands(inputText) {
     }
 
     addManualBtn.onclick = () => {
-  const inputText = manualInput.value;
-  tryAddOrCommand(inputText);
-  manualInput.value = "";
-};
-
-     
+      const inputText = manualInput.value;
+      addTask(inputText);
+      manualInput.value = "";
+    };
 
     // ====== BACKUP/RESTORE ======
     exportTasksBtn.onclick = function() {
@@ -397,7 +360,7 @@ function handleSpecialCommands(inputText) {
       playBeep();
       await sleep(250); // Let beep finish before starting mic
       await listenWithSilenceDetection(async (transcript) => {
-      tryAddOrCommand(transcript);
+        addTask(transcript);
         transcriptDiv.textContent += " → Task added.";
         gptAnswer.textContent = "";
       }, speakBtn);
@@ -463,16 +426,17 @@ function handleSpecialCommands(inputText) {
         playBeep();
         await sleep(250); // Let beep finish before starting mic
         transcriptDiv.textContent = "Listening...";
-        let userInput = await listenOnceWithSilenceDetection(handsFreeBtn);
+       let userInput = await listenOnceWithSilenceDetection(handsFreeBtn);
 
-        // Handle empty or failed STT
-        if (!userInput || !userInput.trim()) {
-          await speakTextWithWebSpeech("Sorry, can you repeat please.");
-          await sleep(400);
-          playBeep();
-          await sleep(250);
-          continue;
-        }
+// Handle empty or failed STT
+if (!userInput || !userInput.trim()) {
+  transcriptDiv.textContent = "No clear input. Listening again...";
+  await sleep(400);
+  playBeep();
+  await sleep(250);
+  continue;
+}
+
 
         // Handle stop voice command
         if (/^(stop|disconnect|goodbye|exit|cancel)$/i.test(userInput.trim())) {
@@ -543,104 +507,130 @@ function handleSpecialCommands(inputText) {
       interruptTTSBtn.style.display = "none";
       muteMicBtn.style.display = "none";
     }
+
     async function listenWithSilenceDetection(callback, buttonElem) {
-      const ASSEMBLYAI_API_KEY = getAssemblyKey();
-      if (!ASSEMBLYAI_API_KEY) {
-        alert("Please enter and save your AssemblyAI API key.");
-        return;
-      }
-      isRecording = true;
-      audioChunks = [];
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.start();
-      buttonElem.textContent = "⏹️ Stop Recording";
-      buttonElem.classList.add("recording");
+  const ASSEMBLYAI_API_KEY = getAssemblyKey();
+  if (!ASSEMBLYAI_API_KEY) {
+    alert("Please enter and save your AssemblyAI API key.");
+    return;
+  }
 
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      source = audioContext.createMediaStreamSource(stream);
-      analyser = audioContext.createAnalyser();
-      source.connect(analyser);
-      analyser.fftSize = 2048;
-      const data = new Uint8Array(analyser.fftSize);
+  const SILENCE_THRESHOLD = 0.05;         // Less sensitive to background noise
+  const SILENCE_DURATION = 3000;          // Wait 3 seconds of silence before stopping
+  const MIN_RECORDING_DURATION = 1500;    // Must record at least 1.5 seconds
 
-      function checkSilence() {
-        analyser.getByteTimeDomainData(data);
-        let sum = 0;
-        for (let i = 0; i < data.length; i++) {
-          const normalized = (data[i] - 128) / 128;
-          sum += normalized * normalized;
-        }
-        const volume = Math.sqrt(sum / data.length);
-        if (volume < SILENCE_THRESHOLD) {
-          if (!silenceTimeout) {
-            silenceTimeout = setTimeout(() => {
-              if (isRecording) {
-                mediaRecorder.stop();
-                cleanupAudio();
-              }
-            }, SILENCE_DURATION);
-          }
-        } else {
-          if (silenceTimeout) {
-            clearTimeout(silenceTimeout);
-            silenceTimeout = null;
-          }
-        }
-        if (isRecording) {
-          requestAnimationFrame(checkSilence);
-        }
-      }
-      requestAnimationFrame(checkSilence);
+  isRecording = true;
+  audioChunks = [];
+  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.start();
+  const recordingStartTime = Date.now();
 
-      mediaRecorder.ondataavailable = e => {
-        audioChunks.push(e.data);
-      };
+  buttonElem.textContent = "⏹️ Stop Recording";
+  buttonElem.classList.add("recording");
 
-      mediaRecorder.onstop = async () => {
-        isRecording = false;
-        buttonElem.textContent = buttonElem === speakBtn ? "🎙️ Speak" : "🤖 Hands Free";
-        buttonElem.classList.remove("recording");
-        cleanupAudio();
-        transcriptDiv.textContent = "Uploading and transcribing...";
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        const uploadRes = await fetch("https://api.assemblyai.com/v2/upload", {
-          method: "POST",
-          headers: { "authorization": ASSEMBLYAI_API_KEY },
-          body: audioBlob
-        });
-        const { upload_url } = await uploadRes.json();
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  source = audioContext.createMediaStreamSource(stream);
+  analyser = audioContext.createAnalyser();
+  source.connect(analyser);
+  analyser.fftSize = 2048;
+  const data = new Uint8Array(analyser.fftSize);
 
-        const transcriptRes = await fetch("https://api.assemblyai.com/v2/transcript", {
-          method: "POST",
-          headers: {
-            "authorization": ASSEMBLYAI_API_KEY,
-            "content-type": "application/json"
-          },
-          body: JSON.stringify({ audio_url: upload_url })
-        });
-        const { id } = await transcriptRes.json();
-
-        let completed = false;
-        while (!completed) {
-          await new Promise(res => setTimeout(res, 2000));
-          const pollingRes = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
-            headers: { "authorization": ASSEMBLYAI_API_KEY }
-          });
-          const data = await pollingRes.json();
-          if (data.status === "completed") {
-            transcriptDiv.textContent = data.text;
-            await callback(data.text);
-            completed = true;
-          } else if (data.status === "failed") {
-            transcriptDiv.textContent = "Transcription failed.";
-            completed = true;
-          } else {
-            transcriptDiv.textContent = "Transcribing...";
-          }
-        }
-      };
+  function checkSilence() {
+    analyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+      const normalized = (data[i] - 128) / 128;
+      sum += normalized * normalized;
     }
+    const volume = Math.sqrt(sum / data.length);
+
+    if (volume < SILENCE_THRESHOLD) {
+      if (!silenceTimeout && Date.now() - recordingStartTime > MIN_RECORDING_DURATION) {
+        silenceTimeout = setTimeout(() => {
+          if (isRecording) {
+            mediaRecorder.stop();
+            cleanupAudio();
+          }
+        }, SILENCE_DURATION);
+      }
+    } else {
+      if (silenceTimeout) {
+        clearTimeout(silenceTimeout);
+        silenceTimeout = null;
+      }
+    }
+
+    if (isRecording) {
+      requestAnimationFrame(checkSilence);
+    }
+  }
+
+  requestAnimationFrame(checkSilence);
+
+  mediaRecorder.ondataavailable = e => {
+    audioChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = async () => {
+    isRecording = false;
+    buttonElem.textContent = buttonElem === speakBtn ? "🎙️ Speak" : "🤖 Hands Free";
+    buttonElem.classList.remove("recording");
+    cleanupAudio();
+
+    transcriptDiv.textContent = "Uploading and transcribing...";
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+
+    try {
+      const uploadRes = await fetch("https://api.assemblyai.com/v2/upload", {
+        method: "POST",
+        headers: { "authorization": ASSEMBLYAI_API_KEY },
+        body: audioBlob
+      });
+      const { upload_url } = await uploadRes.json();
+
+      const transcriptRes = await fetch("https://api.assemblyai.com/v2/transcript", {
+        method: "POST",
+        headers: {
+          "authorization": ASSEMBLYAI_API_KEY,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({ audio_url: upload_url })
+      });
+      const { id } = await transcriptRes.json();
+
+      let completed = false;
+      while (!completed) {
+        await new Promise(res => setTimeout(res, 2000));
+        const pollingRes = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
+          headers: { "authorization": ASSEMBLYAI_API_KEY }
+        });
+        const data = await pollingRes.json();
+
+ if (data.status === "completed") {
+  if (!data.text || data.text.trim().split(" ").length < 2) {
+    transcriptDiv.textContent = "Too short or unclear. Ignored.";
+    await callback(""); // Call callback with empty string to continue
+    completed = true;
+    return;
+  }
+  transcriptDiv.textContent = data.text;
+  await callback(data.text);
+  completed = true;
+}
+
+        else if (data.status === "failed") {
+          transcriptDiv.textContent = "Transcription failed.";
+          completed = true;
+        } else {
+          transcriptDiv.textContent = "Transcribing...";
+        }
+      }
+    } catch (err) {
+      transcriptDiv.textContent = "Error: " + err.message;
+    }
+  };
+}
 
     async function listenOnceWithSilenceDetection(buttonElem) {
       return new Promise(resolve => {
@@ -772,50 +762,96 @@ function handleSpecialCommands(inputText) {
         return "Request failed: " + err.message;
       }
     }
+// JD start
+function populateVoiceList() {
+  const select = document.getElementById('voiceSelect');
+  if (!select) return;
 
+  const voices = speechSynthesis.getVoices();
+  select.innerHTML = ''; // Clear existing options
+
+  voices.forEach((voice, index) => {
+    const option = document.createElement('option');
+    option.value = index;
+    option.textContent = `${voice.name} (${voice.lang})${voice.localService ? ' [local]' : ''}`;
+    select.appendChild(option);
+  });
+
+  // Try to auto-select Matilda if available
+  const matildaIndex = voices.findIndex(v => v.name === "Matilda");
+  if (matildaIndex !== -1) {
+    select.value = matildaIndex;
+  }
+}
+
+// Ensure voices are loaded
+speechSynthesis.onvoiceschanged = populateVoiceList;
+window.addEventListener("load", populateVoiceList);
+    // JD end
     // Platform-specific voice selection
-    function getBestVoice() {
-      const voices = window.speechSynthesis.getVoices();
-      const ua = navigator.userAgent;
-      const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-      if (isIOS) {
-        return voices.find(v => v.name === "Alex") ||
-               voices.find(v => v.name === "Samantha") ||
-               voices[0];
-      } else if (ua.indexOf("Windows") !== -1) {
-        return voices.find(v => v.name === "Microsoft David") ||
-               voices.find(v => v.name === "Microsoft Zira") ||
-               voices[0];
-      } else {
-        return voices[0];
-      }
-    }
+// Restore silence control settings from localStorage
+window.addEventListener("load", () => {
+  const silenceThresholdInput = document.getElementById("silenceThresholdInput");
+  const silenceDurationInput = document.getElementById("silenceDurationInput");
+
+  silenceThresholdInput.value = localStorage.getItem("silenceThreshold") || "0.05";
+  silenceDurationInput.value = localStorage.getItem("silenceDuration") || "3000";
+});
+
+// Save when user changes values
+document.getElementById("silenceThresholdInput").addEventListener("input", e => {
+  localStorage.setItem("silenceThreshold", e.target.value);
+});
+document.getElementById("silenceDurationInput").addEventListener("input", e => {
+  localStorage.setItem("silenceDuration", e.target.value);
+});
+
+    //JD start
+function getBestVoice() {
+  const voices = speechSynthesis.getVoices();
+  const select = document.getElementById("voiceSelect");
+  if (select && voices.length > 0) {
+    const selectedIndex = parseInt(select.value, 10);
+    return voices[selectedIndex] || voices[0];
+  }
+  return voices[0];
+}
+
+  //JD end
 
     // Interruptible TTS
-    function speakTextWithWebSpeech(text) {
-      return new Promise((resolve) => {
-        const synth = window.speechSynthesis;
-        if (!synth) {
-          alert("Speech Synthesis not supported in this browser.");
-          resolve();
-          return;
-        }
-        ttsSpeaking = true;
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.voice = getBestVoice();
-        utter.pitch = 1;
-        utter.rate = 0.97;
-        utter.onend = () => {
-          ttsSpeaking = false;
-          resolve();
-        };
-        utter.onerror = () => {
-          ttsSpeaking = false;
-          resolve();
-        };
-        synth.speak(utter);
-      });
+   function speakTextWithWebSpeech(text) {
+  return new Promise((resolve) => {
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      alert("Speech Synthesis not supported in this browser.");
+      resolve();
+      return;
     }
+
+    // Wait for voices to load if needed
+    const speak = () => {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.voice = getBestVoice();
+      utter.pitch = 1;
+      utter.rate = 0.97;
+      utter.onend = () => resolve();
+      utter.onerror = () => resolve();
+      synth.speak(utter);
+    };
+
+    if (speechSynthesis.getVoices().length === 0) {
+      // Voices not loaded yet
+      speechSynthesis.onvoiceschanged = () => {
+        speak();
+      };
+    } else {
+      // Voices already loaded
+      speak();
+    }
+  });
+}
+
 
     function getAllTasks() {
       const allTasks = [];
