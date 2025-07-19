@@ -447,7 +447,11 @@ if (!userInput || !userInput.trim()) {
         }
 
         gptLoading.style.display = "inline";
-        transcriptDiv.textContent = "Thinking...";
+if (userInput && userInput.trim().length > 0) {
+  transcriptDiv.textContent = `🗣️ You said: "${userInput.trim()}"\nThinking...`;
+} else {
+  transcriptDiv.textContent = "Thinking...";
+}
 
         const preprocessedInput = preprocessInput(userInput);
         const toParse = stripBeforeAddOrCreate(preprocessedInput);
