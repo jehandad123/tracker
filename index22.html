@@ -306,7 +306,7 @@ const REQUIRED_ACTIVE_FRAMES = 5; // ✅ How many frames need to be "loud" to tr
       loadTasks();
       transcriptDiv.textContent += `\n[Parsed: ${JSON.stringify({task: cleanedTask, category: normalizedCategory})}] → Task added.`;
       gptAnswer.textContent = "";
-      speakTextWithWebSpeech("Task added to " + normalizedCategory + " category.");
+      // speakTextWithWebSpeech("Task added to " + normalizedCategory + " category.");
     }
 
     addManualBtn.onclick = () => {
