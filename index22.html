@@ -6,7 +6,16 @@
   <title>Hands-Free Task Manager</title>
   <script src="chrono.min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+body {
+  font-family: sans-serif;
+  padding: 16px;
+  max-width: 100%;
+  margin: auto;
+  font-size: 18px;         /* ⬅️ Larger default font */
+  line-height: 1.6;        /* ⬅️ Better readability */
+  background-color: #fff;  /* optional: white background */
+}
+
     button { padding: 10px 20px; font-size: 16px; margin-top: 10px; cursor: pointer; }
     #speakBtn.recording, #handsFreeBtn.recording { background: #d32f2f; color: #fff; }
     #stopBtn, #interruptTTSBtn, #muteMicBtn { margin-left: 10px; }
@@ -20,9 +29,29 @@
     .api-inputs { margin-bottom: 16px; }
     .api-inputs label { display: block; margin-top: 8px; }
     .task-input { margin-top: 20px; }
-    .task-row { display: flex; align-items: center; margin-bottom: 5px; }
-    .task-text { flex: 1; }
-    .task-controls { display: flex; align-items: center; gap: 5px; }
+.task-row {
+  display: flex;
+  flex-direction: column; /* 🆕 Put text above controls */
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}    
+
+    .task-text {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+  .task-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
     .dropdown { position: relative; display: inline-block; }
     .dropdown-content {
       display: none;
