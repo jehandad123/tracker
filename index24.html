@@ -26,6 +26,9 @@ button {
   line-height: 1.4;
   width: auto;
 }
+
+    
+    
     #speakBtn.recording, #handsFreeBtn.recording { background: #d32f2f; color: #fff; }
     #stopBtn, #interruptTTSBtn, #muteMicBtn { margin-left: 10px; }
     #transcript { margin-top: 20px; border: 1px solid #ccc; padding: 10px; min-height: 30px; white-space: pre-wrap; }
@@ -552,28 +555,6 @@ if (userInput && userInput.trim().length > 0) {
         let handled = false;
         try {
           const lower = toParse.trim().toLowerCase();
-        
-// 🔻 Voice command: "delete task 3 in Home"
-const deleteMatch = toParse.match(/delete\s+task\s+(\d+)\s+in\s+(\w+)/i);
-if (deleteMatch) {
-  const number = parseInt(deleteMatch[1]); // the task number like "3"
-  const categoryRaw = deleteMatch[2];      // the spoken category like "home"
-  const category = extractValidCategory(categoryRaw); // normalize it (e.g. capital H)
-
-  if (!category) {
-    await speakTextWithWebSpeech("Sorry, I couldn’t recognize the category. Try saying something like 'delete task 2 in Shop'.");
-    handled = true;
-  } else {
-    const success = deleteTaskByNumber(category, number);
-    if (success) {
-      await speakTextWithWebSpeech(`Deleted task number ${number} from ${category}.`);
-    } else {
-      await speakTextWithWebSpeech(`Task number ${number} in ${category} was not found.`);
-    }
-    handled = true;
-  }
-}
-                    
           if (lower.startsWith("add ") || lower.startsWith("create ")) {
             const result = await extractTaskAndCategoryWithGPT(toParse);
             gptLoading.style.display = "none";
@@ -601,27 +582,23 @@ if (deleteMatch) {
           continue;
         }
 
-if (!handled) {
-  try {
-    // this only runs if no command was handled like "add task" or "delete task"
-    const gptResponse = await askGpt(toParse);
-    gptLoading.style.display = "none";
-    lastGptResponse = gptResponse;
-    await speakTextWithWebSpeech(gptResponse);
-    await sleep(400);
-    playBeep();
-    await sleep(250);
-  } catch (e) {
-    gptLoading.style.display = "none";
-    await speakTextWithWebSpeech("Sorry, can you repeat please.");
-    await sleep(400);
-    playBeep();
-    await sleep(250);
-  }
-} else {
-  // GPT was skipped because a task was handled
-  gptLoading.style.display = "none";
-}
+        if (!handled) {
+          try {
+            const gptResponse = await askGpt(toParse);
+            gptLoading.style.display = "none";
+            lastGptResponse = gptResponse;
+            await speakTextWithWebSpeech(gptResponse);
+            await sleep(400);
+            playBeep();
+            await sleep(250);
+          } catch (e) {
+            gptLoading.style.display = "none";
+            await speakTextWithWebSpeech("Sorry, can you repeat please.");
+            await sleep(400);
+            playBeep();
+            await sleep(250);
+            continue;
+          }
         }
       }
       isConversation = false;
@@ -698,6 +675,7 @@ silenceTimeout = setTimeout(() => {
     requestAnimationFrame(checkSilence);
   }
 }
+
 
   requestAnimationFrame(checkSilence);
 
@@ -861,8 +839,14 @@ silenceTimeout = setTimeout(() => {
       }
       gptAnswer.textContent = "";
       const tasks = getAllTasks();
+let maxTokens = 200; // ✅ Keep answers short by default
 
-      let maxTokens = 200;
+// Check if the user is asking for a detailed task list
+if (/list all|show all|everything|all tasks|in category/i.test(userQuestion)) {
+  maxTokens = 1000; // ✅ Allow longer replies
+  prompt += "\nPlease provide a full, detailed list if applicable.";  // Optional: enhance GPT behavior
+}
+      
 let prompt = `Here are my tasks, grouped and numbered per category:\n`;
 
 categories.forEach((cat) => {
@@ -874,12 +858,9 @@ categories.forEach((cat) => {
   }
 });
 
-// ✅ Now it's safe to add extra instructions
-if (/list all|show all|everything|all tasks|in category/i.test(userQuestion)) {
-  maxTokens = 1000;
-  prompt += "\nPlease provide a full, detailed list if applicable.";
-}
 prompt += `\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences. Only give a full list or long explanation if I specifically ask for "all tasks" or a full breakdown.`;
+
+            
       try {
 const res = await fetch("https://api.openai.com/v1/chat/completions", {
   method: "POST",
@@ -1107,18 +1088,15 @@ taskText.textContent = `${taskNumber}. ${taskObj.text}`;
       saveTasks(category, tasks);
       loadTasks();
     }
-
 function deleteTaskByNumber(categoryName, taskNumber) {
   const tasks = JSON.parse(localStorage.getItem(categoryName)) || [];
-  const index = taskNumber - 1; // tasks are displayed as 1-based
+  const index = taskNumber - 1; // 1-based to 0-based
   if (index < 0 || index >= tasks.length) return false;
   tasks.splice(index, 1);
   saveTasks(categoryName, tasks);
   loadTasks();
   return true;
-}
-
-    
+}    
     function editTask(category, idx, taskTextElem, row) {
       const tasks = JSON.parse(localStorage.getItem(category)) || [];
       const oldTaskObj = tasks[idx];
