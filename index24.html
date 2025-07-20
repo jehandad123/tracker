@@ -626,7 +626,7 @@ if (!handled) {
   gptLoading.style.display = "none";
 }
 
-          } catch (e) {
+          catch (e) {
             gptLoading.style.display = "none";
             await speakTextWithWebSpeech("Sorry, can you repeat please.");
             await sleep(400);
