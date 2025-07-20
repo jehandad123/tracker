@@ -1112,14 +1112,26 @@ taskText.textContent = `${taskNumber}. ${taskObj.text}`;
     }
 function deleteTaskByNumber(categoryName, taskNumber) {
   const tasks = JSON.parse(localStorage.getItem(categoryName)) || [];
-  const index = taskNumber - 1; // 1-based to 0-based
-  if (index < 0 || index >= tasks.length) return false;
-  tasks.splice(index, 1);
+  const index = taskNumber - 1;
+
+  console.log(`[DeleteByVoice] category: "${categoryName}", task #: ${taskNumber}, index = ${index}`);
+  console.log("[DeleteByVoice] Tasks before deletion:", tasks);
+
+  if (index < 0 || index >= tasks.length) {
+    console.warn("[DeleteByVoice] Index out of range — nothing deleted.");
+    return false;
+  }
+
+  const removed = tasks.splice(index, 1);
+  console.log("[DeleteByVoice] Removed:", removed);
+
   saveTasks(categoryName, tasks);
+  console.log("[DeleteByVoice] Tasks after deletion:", tasks);
+
   loadTasks();
-  showAllCategories(); // 👈 This makes UI reflect the change ✅
   return true;
-}    
+}
+
     function editTask(category, idx, taskTextElem, row) {
       const tasks = JSON.parse(localStorage.getItem(category)) || [];
       const oldTaskObj = tasks[idx];
