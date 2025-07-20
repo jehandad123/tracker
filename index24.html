@@ -556,26 +556,28 @@ if (userInput && userInput.trim().length > 0) {
         try {
           const lower = toParse.trim().toLowerCase();
 
-  // 🔻 Voice command: "delete task 3 in Home"
-  const deleteMatch = toParse.match(/delete\s+task\s+(\d+)\s+in\s+(\w+)/i);
-  if (deleteMatch) {
-    const number = parseInt(deleteMatch[1]);  // e.g. 3
-    const categoryRaw = deleteMatch[2];       // e.g. Home
-    const category = extractValidCategory(categoryRaw);
+const deleteMatch = toParse.match(/(?:delete|remove)\s+task\s+(\d+)\s+(?:in|from)\s+([\w\s]+)/i);
+if (deleteMatch) {
+  const number = parseInt(deleteMatch[1]);
+  const categoryRaw = deleteMatch[2];
+  const category = extractValidCategory(categoryRaw);
 
-    if (!category) {
-      await speakTextWithWebSpeech("Couldn't identify the category. Try saying 'delete task 2 in Home'");
+  console.log("[VoiceDelete] Matched command:", toParse);
+  console.log("[VoiceDelete] Parsed number:", number, "Category:", categoryRaw, "→", category);
+
+  if (!category) {
+    await speakTextWithWebSpeech("Couldn't identify the category. Try 'delete task 2 from Shop'.");
+  } else {
+    const success = deleteTaskByNumber(category, number);
+    if (success) {
+      await speakTextWithWebSpeech(`Deleted task number ${number} from ${category}.`);
     } else {
-      const success = deleteTaskByNumber(category, number);
-      if (success) {
-        await speakTextWithWebSpeech(`Deleted task number ${number} from ${category}.`);
-      } else {
-        await speakTextWithWebSpeech(`Couldn't find task number ${number} in ${category}.`);
-      }
+      await speakTextWithWebSpeech(`Could not find task number ${number} in ${category}.`);
     }
-
-    handled = true;
   }
+
+  handled = true;
+}
           
           if (lower.startsWith("add ") || lower.startsWith("create ")) {
             const result = await extractTaskAndCategoryWithGPT(toParse);
