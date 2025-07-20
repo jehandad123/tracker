@@ -555,6 +555,28 @@ if (userInput && userInput.trim().length > 0) {
         let handled = false;
         try {
           const lower = toParse.trim().toLowerCase();
+
+  // 🔻 Voice command: "delete task 3 in Home"
+  const deleteMatch = toParse.match(/delete\s+task\s+(\d+)\s+in\s+(\w+)/i);
+  if (deleteMatch) {
+    const number = parseInt(deleteMatch[1]);  // e.g. 3
+    const categoryRaw = deleteMatch[2];       // e.g. Home
+    const category = extractValidCategory(categoryRaw);
+
+    if (!category) {
+      await speakTextWithWebSpeech("Couldn't identify the category. Try saying 'delete task 2 in Home'");
+    } else {
+      const success = deleteTaskByNumber(category, number);
+      if (success) {
+        await speakTextWithWebSpeech(`Deleted task number ${number} from ${category}.`);
+      } else {
+        await speakTextWithWebSpeech(`Couldn't find task number ${number} in ${category}.`);
+      }
+    }
+
+    handled = true;
+  }
+          
           if (lower.startsWith("add ") || lower.startsWith("create ")) {
             const result = await extractTaskAndCategoryWithGPT(toParse);
             gptLoading.style.display = "none";
