@@ -555,8 +555,7 @@ if (userInput && userInput.trim().length > 0) {
         let handled = false;
         try {
           const lower = toParse.trim().toLowerCase();
-
-const deleteMatch = toParse.match(/(?:delete|remove)\s+task\s+(\d+)\s+(?:in|from)\s+([\w\s]+)/i);
+const deleteMatch = toParse.match(/(?:delete|remove)\s+task\s+(\d+)(?:\s+(?:in|from)\s+|\s+)([\w\s]+)/i);
 if (deleteMatch) {
   const number = parseInt(deleteMatch[1]);
   const categoryRaw = deleteMatch[2];
