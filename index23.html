@@ -847,8 +847,19 @@ if (/list all|show all|everything|all tasks|in category/i.test(userQuestion)) {
   prompt += "\nPlease provide a full, detailed list if applicable.";  // Optional: enhance GPT behavior
 }
       
-let prompt = `Here are my tasks:\n${tasks.map(t => `- [${t.category}] ${t.text}${t.date ? " (" + t.date.slice(0,10) + ")" : ""}`).join('\n')}
+let prompt = `Here are my tasks, grouped and numbered per category:\n`;
 
+categories.forEach((cat) => {
+  const catTasks = tasks.filter(t => t.category === cat);
+  if (catTasks.length > 0) {
+    prompt += `\n${cat}:\n` + catTasks.map((t, i) =>
+      `${i + 1}. ${t.text}${t.date ? ' (' + t.date.slice(0, 10) + ')' : ''}`
+    ).join("\n") + "\n";
+  }
+});
+
+
+      
 User question: ${userQuestion}
 
 Answer in 1–2 short sentences. Only give a full list or long explanation if I specifically ask for "all tasks" or a full breakdown.`;
