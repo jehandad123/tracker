@@ -1117,6 +1117,7 @@ function deleteTaskByNumber(categoryName, taskNumber) {
   tasks.splice(index, 1);
   saveTasks(categoryName, tasks);
   loadTasks();
+  showAllCategories(); // 👈 This makes UI reflect the change ✅
   return true;
 }    
     function editTask(category, idx, taskTextElem, row) {
