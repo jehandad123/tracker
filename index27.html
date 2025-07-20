@@ -890,24 +890,18 @@ let maxTokens = 200; // ✅ Keep answers short by default
 
 // Check if the user is asking for a detailed task list
 // Match variations like 'list all tasks in home category', 'show all tasks from shop', etc.
-if (
-  /\b(list|show)\s+(all )?(tasks?)?\s*(in|from)?\s*([\w\s]+)?\s*(category)?/i.test(userQuestion)
-) {
-  // Try to extract the category requested
-  const match = userQuestion.match(/\b(list|show)\s+(all )?(tasks?)?\s*(in|from)?\s*([\w\s]+)?\s*(category)?/i);
-  let requestedCategory = '';
-  if (match && match[5]) {
-    requestedCategory = match[5].trim().replace(/category/i, '').trim(); // strip 'category'
-    // Capitalize first letter for comparison (if your categories are 'Home', 'Today', etc.)
-    requestedCategory = requestedCategory.charAt(0).toUpperCase() + requestedCategory.slice(1).toLowerCase();
-  }
-
-  maxTokens = 1000; // allow detailed answer
-
-  if (requestedCategory && categories.includes(requestedCategory)) {
-    prompt += `\nPlease provide a full, detailed, numbered list of EVERY task in the '${requestedCategory}' category ONLY. Do not summarize, do not list other categories.`;
+let fullListMatch = userQuestion.match(
+  /\b(list|show)\s+(all\s+)?(tasks?)?\s*(in|from)?\s*(home|today|urgent|shop)?\s*(category)?/i
+);
+if (fullListMatch) {
+  maxTokens = 1000;
+  let requestedCategory = fullListMatch[5]
+    ? fullListMatch[5].trim().charAt(0).toUpperCase() + fullListMatch[5].trim().slice(1).toLowerCase()
+    : "";
+  if (categories.includes(requestedCategory)) {
+    prompt += `\nList EVERY task ONLY in the '${requestedCategory}' category, numbered. Don't summarize. For example:\n1. First task\n2. Second task\n`;
   } else {
-    prompt += `\nPlease provide a full, detailed, numbered list of EVERY task in ALL categories, grouped by category. Do not summarize.`;
+    prompt += `\nList EVERY task in ALL categories, grouped by category and each numbered. Don't summarize.`;
   }
 }
 
