@@ -886,26 +886,10 @@ silenceTimeout = setTimeout(() => {
       }
       gptAnswer.textContent = "";
       const tasks = getAllTasks();
-let maxTokens = 200; // ✅ Keep answers short by default
 
-// Check if the user is asking for a detailed task list
-// Match variations like 'list all tasks in home category', 'show all tasks from shop', etc.
-let fullListMatch = userQuestion.match(
-  /\b(list|show)\s+(all\s+)?(tasks?)?\s*(in|from)?\s*(home|today|urgent|shop)?\s*(category)?/i
-);
-if (fullListMatch) {
-  maxTokens = 1000;
-  let requestedCategory = fullListMatch[5]
-    ? fullListMatch[5].trim().charAt(0).toUpperCase() + fullListMatch[5].trim().slice(1).toLowerCase()
-    : "";
-  if (categories.includes(requestedCategory)) {
-    prompt += `\nList EVERY task ONLY in the '${requestedCategory}' category, numbered. Don't summarize. For example:\n1. First task\n2. Second task\n`;
-  } else {
-    prompt += `\nList EVERY task in ALL categories, grouped by category and each numbered. Don't summarize.`;
-  }
-}
+      let maxTokens = 200; // keep replies short by default
 
-      
+// Start prompt with actual task data
 let prompt = `Here are my tasks, grouped and numbered per category:\n`;
 
 categories.forEach((cat) => {
@@ -917,9 +901,24 @@ categories.forEach((cat) => {
   }
 });
 
-prompt += `\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences. Only give a full list or long explanation if I specifically ask for "all tasks" or a full breakdown.`;
+// Check if user is asking for full list of one category
+const categoryList = categories.map(cat => cat.toLowerCase()).join('|');
+const fullListRegex = new RegExp(`\\b(list|show)\\s+(all\\s+)?tasks?\\s*(in|from)?\\s*(${categoryList})(\\s*category)?\\b`, 'i');
+const fullListMatch = userQuestion.match(fullListRegex);
 
-            
+if (fullListMatch && fullListMatch[4]) {
+  let matched = fullListMatch[4].trim().toLowerCase();
+  let requestedCategory = matched.charAt(0).toUpperCase() + matched.slice(1);
+  if (categories.includes(requestedCategory)) {
+    maxTokens = 1000;
+    prompt += `\nUser asked for all tasks in '${requestedCategory}'. List every task from that category only. Do not summarize. Number each item clearly.`;
+  }
+} else if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(userQuestion)) {
+  maxTokens = 1000;
+  prompt += `\nUser asked for all tasks in all categories. Return a complete list, grouped and numbered. No summary.`;
+}
+
+prompt += `\n\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences unless user asked for a full list.`;     
       try {
 const res = await fetch("https://api.openai.com/v1/chat/completions", {
   method: "POST",
