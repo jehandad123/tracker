@@ -622,9 +622,6 @@ if (!handled) {
   // GPT was skipped because a task was handled
   gptLoading.style.display = "none";
 }
-
-
-        
         }
       }
       isConversation = false;
@@ -701,7 +698,6 @@ silenceTimeout = setTimeout(() => {
     requestAnimationFrame(checkSilence);
   }
 }
-
 
   requestAnimationFrame(checkSilence);
 
@@ -865,14 +861,8 @@ silenceTimeout = setTimeout(() => {
       }
       gptAnswer.textContent = "";
       const tasks = getAllTasks();
-let maxTokens = 200; // ✅ Keep answers short by default
 
-// Check if the user is asking for a detailed task list
-if (/list all|show all|everything|all tasks|in category/i.test(userQuestion)) {
-  maxTokens = 1000; // ✅ Allow longer replies
-  prompt += "\nPlease provide a full, detailed list if applicable.";  // Optional: enhance GPT behavior
-}
-      
+      let maxTokens = 200;
 let prompt = `Here are my tasks, grouped and numbered per category:\n`;
 
 categories.forEach((cat) => {
@@ -884,9 +874,12 @@ categories.forEach((cat) => {
   }
 });
 
+// ✅ Now it's safe to add extra instructions
+if (/list all|show all|everything|all tasks|in category/i.test(userQuestion)) {
+  maxTokens = 1000;
+  prompt += "\nPlease provide a full, detailed list if applicable.";
+}
 prompt += `\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences. Only give a full list or long explanation if I specifically ask for "all tasks" or a full breakdown.`;
-
-            
       try {
 const res = await fetch("https://api.openai.com/v1/chat/completions", {
   method: "POST",
