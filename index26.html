@@ -1,0 +1,1193 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hands-Free Task Manager</title>
+  <script src="chrono.min.js"></script>
+  <style>
+body {
+  font-family: sans-serif;
+  padding: 16px;
+  max-width: 100%;
+  margin: auto;
+  font-size: 18px;         /* ⬅️ Larger default font */
+  line-height: 1.6;        /* ⬅️ Better readability */
+  background-color: #fff;  /* optional: white background */
+}
+
+button {
+  padding: 14px 24px;       /* Bigger padding */
+  font-size: 20px;           /* Larger text */
+  margin-top: 12px;
+  border-radius: 6px;        /* Rounded corners for better look */
+  cursor: pointer;
+  min-height: 44px;          /* Recommended mobile tap target height 👍 */
+  line-height: 1.4;
+  width: auto;
+}
+
+    
+    
+    #speakBtn.recording, #handsFreeBtn.recording { background: #d32f2f; color: #fff; }
+    #stopBtn, #interruptTTSBtn, #muteMicBtn { margin-left: 10px; }
+    #transcript { margin-top: 20px; border: 1px solid #ccc; padding: 10px; min-height: 30px; white-space: pre-wrap; }
+    #gptAnswer { margin-top: 18px; padding: 10px; background: #f3f3f3; border-radius: 6px; min-height: 30px; }
+    #gptLoading { color: #d32f2f; display: none; }
+    .category { margin-top: 20px; }
+.category h3 {
+  font-size: 22px;
+  font-weight: bold;
+}
+    ul { list-style-type: disc; padding-left: 20px; }
+input[type=text] {
+  width: 100%;
+  padding: 14px;
+  font-size: 20px;
+  border-radius: 6px;
+}
+    .api-inputs { margin-bottom: 16px; }
+    .api-inputs label { display: block; margin-top: 8px; }
+    .task-input { margin-top: 20px; }
+.task-row {
+  display: flex;
+  flex-direction: column; /* 🆕 Put text above controls */
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}    
+
+    .task-text {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+  .task-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+    .task-controls button {
+  font-size: 20px;
+  padding: 12px 16px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 1 1 auto;
+}
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      background-color: #f9f9f9;
+      min-width: 100px;
+      box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+      z-index: 1;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .dropdown-content button {
+      color: black;
+      padding: 8px 12px;
+      text-align: left;
+      text-decoration: none;
+      display: block;
+      border: none;
+      background: none;
+      width: 100%;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .dropdown-content button:hover {
+      background-color: #f1f1f1;
+    }
+    .dropdown.show .dropdown-content {
+      display: block;
+    }
+    .edit-input {
+      width: 80%;
+      padding: 3px 6px;
+      font-size: 15px;
+    }
+    .hidden { display: none !important; }
+    .date-badge {
+      background: #e0e0e0;
+      color: #333;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+    #showAllBtn { margin-top: 10px; margin-bottom: 10px; }
+    #exportTasksBtn { margin-top: 16px; }
+    #backupArea { margin-top: 8px; font-size: 13px; }
+    #interruptTTSBtn, #muteMicBtn { background: #fbc02d; color: #222; }
+    #muteMicBtn.muted { background: #bdbdbd; color: #666; }
+
+  /* 🔻 Add this to the bottom of your <style> block */
+@media (max-width: 600px) {
+  body {
+    font-size: 18px;
+    padding: 14px;
+  }
+
+  .task-text {
+    font-size: 24px;
+  }
+
+  .task-controls button {
+    font-size: 20px;
+    padding: 12px 16px;
+    min-height: 48px; /* big enough for mobile tap */
+  }
+
+  input[type="text"] {
+    font-size: 20px;
+    padding: 14px;
+    width: 100%;
+  }
+
+  button {
+    font-size: 20px;
+    padding: 14px 20px;
+  }
+
+  .category h3 {
+    font-size: 22px;
+    margin-top: 24px;
+  }
+
+  #gptAnswer, #transcript {
+    font-size: 20px;
+    line-height: 1.6;
+  }
+}
+  
+  </style>
+</head>
+<body>
+  <div class="api-inputs">
+    <label>
+      OpenAI API Key:
+      <input type="text" id="openaiKey" placeholder="Paste your OpenAI API Key" autocomplete="off" />
+    </label>
+    <label>
+      AssemblyAI API Key:
+      <input type="text" id="assemblyKey" placeholder="Paste your AssemblyAI API Key" autocomplete="off" />
+    </label>
+    <button id="saveKeysBtn">Save API Keys</button>
+    <span id="apiKeySaved" style="color: green; display: none;">✔️ Saved!</span>
+  </div>
+  <button id="speakBtn">🎙️ Speak</button>
+  <button id="handsFreeBtn">🤖 Hands Free</button>
+    <button id="stopBtn" style="display:none;">⏹️ Stop Conversation</button>
+  <button id="interruptTTSBtn" style="display:none;">⏹️ Interrupt Voice</button>
+  <button id="muteMicBtn" style="display:none;">🔇 Mute Mic</button>
+  <!-- 🎚️ Silence Threshold / Duration Controls -->
+<div style="margin-top: 16px;">
+  <label>
+    Silence Threshold:
+    <input type="number" id="silenceThresholdInput" min="0.001" max="0.2" step="0.001" value="0.05" />
+  </label>
+  <label style="margin-left: 10px;">
+    Silence Duration (ms):
+    <input type="number" id="silenceDurationInput" min="500" max="10000" step="100" value="3000" />
+  </label>
+</div>
+
+  <span id="gptLoading">Thinking...</span>
+  <div id="transcript"></div>
+  <div id="gptAnswer"></div>
+  
+  <h2>Task Manager with Voice and Manual Input</h2>
+  <div class="task-input">
+    <input type="text" id="manualInput" placeholder="Enter task and category at end (e.g. Buy milk Shop)" />
+    <button id="addManualBtn">Add Task Manually</button>
+  </div>
+  <button id="showAllBtn" style="display:none;">Show All Tasks</button>
+  <div id="categories">
+    <div class="category" id="Home">
+      <h3>Home</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Today">
+      <h3>Today</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Urgent">
+      <h3>Urgent</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Shop">
+      <h3>Shop</h3>
+      <ul></ul>
+    </div>
+  </div>
+  <button id="exportTasksBtn">Export Tasks (Backup)</button>
+  <button id="importTasksBtn">Import Tasks</button>
+  <textarea id="backupArea" style="width:100%;height:80px;" placeholder="Backup JSON will appear here. Paste here to restore."></textarea>
+  <!-- BEEP AUDIO ELEMENT REMOVED -->
+
+  <script>
+    // ====== CONFIG ======
+    const SILENCE_THRESHOLD = Number(document.getElementById("silenceThresholdInput").value) || 0.05;
+const SILENCE_DURATION = Number(document.getElementById("silenceDurationInput").value) || 3000;
+    const MIC_THRESHOLD = 0.03; // Adjust for noise sensitivity
+const REQUIRED_ACTIVE_FRAMES = 5; // ✅ How many frames need to be "loud" to trigger speaking
+
+    // ====== NEW BEEP FUNCTION (Web Audio API) ======
+    function playBeep(frequency = 1500, duration = 120) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.value = frequency;
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start();
+        gain.gain.setValueAtTime(1, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration / 1000);
+        oscillator.stop(ctx.currentTime + duration / 1000);
+        oscillator.onended = () => ctx.close();
+      } catch (e) {}
+    }
+
+    // ====== DOM ELEMENTS ======
+    const openaiKeyInput = document.getElementById("openaiKey");
+    const assemblyKeyInput = document.getElementById("assemblyKey");
+    const saveKeysBtn = document.getElementById("saveKeysBtn");
+    const apiKeySaved = document.getElementById("apiKeySaved");
+    const speakBtn = document.getElementById("speakBtn");
+    const handsFreeBtn = document.getElementById("handsFreeBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const interruptTTSBtn = document.getElementById("interruptTTSBtn");
+    const muteMicBtn = document.getElementById("muteMicBtn");
+    const transcriptDiv = document.getElementById("transcript");
+    const manualInput = document.getElementById("manualInput");
+    const addManualBtn = document.getElementById("addManualBtn");
+    const showAllBtn = document.getElementById("showAllBtn");
+    const gptAnswer = document.getElementById("gptAnswer");
+    const gptLoading = document.getElementById("gptLoading");
+    const exportTasksBtn = document.getElementById("exportTasksBtn");
+    const importTasksBtn = document.getElementById("importTasksBtn");
+    const backupArea = document.getElementById("backupArea");
+
+    const categories = ["Home", "Today", "Urgent", "Shop"];
+
+    // ==== TTS Unlock Logic ====
+    let ttsUnlocked = false;
+    function unlockTTS() {
+      return new Promise(resolve => {
+        if (ttsUnlocked) return resolve();
+        let utter = new SpeechSynthesisUtterance(" ");
+        utter.onend = () => { ttsUnlocked = true; resolve(); };
+        utter.onerror = () => { ttsUnlocked = true; resolve(); };
+        window.speechSynthesis.speak(utter);
+      });
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function stripBeforeAddOrCreate(input) {
+      let match = input.match(/\b(add|create)\b/i);
+      if (match) {
+        return input.slice(match.index).trim();
+      }
+      return input.trim();
+    }
+
+    function extractValidCategory(raw) {
+      if (!raw) return null;
+      let normalized = raw.toLowerCase();
+      normalized = normalized.replace(/[\.\,\!\?\;\:]+/g, '');
+      normalized = normalized.replace(/\b(category|list|task|under|the|a|an|in|to|for|on|of|as|at|with|by|from|into|onto|and|or|add|new|my)\b/g, '').trim();
+      normalized = normalized.replace(/\s{2,}/g, ' ').trim();
+      for (const cat of categories) {
+        if (normalized === cat.toLowerCase()) return cat;
+        if (normalized.includes(cat.toLowerCase())) return cat;
+      }
+      return null;
+    }
+
+    function preprocessInput(input) {
+      return input.replace(/[\.\,\!\?\;\:]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function extractTaskText(input, category) {
+      if (!category) return input.trim();
+      const regex = new RegExp(`\\b${category}\\b[\\.\\!\\?\\s]*$`, 'i');
+      return input.replace(regex, '').trim();
+    }
+
+    function getOpenAIKey() {
+      return localStorage.getItem("openai_api_key") || "";
+    }
+    function getAssemblyKey() {
+      return localStorage.getItem("assembly_api_key") || "";
+    }
+    function saveKeys() {
+      localStorage.setItem("openai_api_key", openaiKeyInput.value.trim());
+      localStorage.setItem("assembly_api_key", assemblyKeyInput.value.trim());
+      apiKeySaved.style.display = "inline";
+      setTimeout(() => apiKeySaved.style.display = "none", 1500);
+    }
+    openaiKeyInput.value = getOpenAIKey();
+    assemblyKeyInput.value = getAssemblyKey();
+    saveKeysBtn.onclick = saveKeys;
+
+    function loadTasks() {
+      categories.forEach(cat => {
+        const tasks = JSON.parse(localStorage.getItem(cat)) || [];
+        const ul = document.querySelector(`#${cat} ul`);
+        ul.innerHTML = "";
+        tasks.forEach((taskObj, idx) => {
+          const li = document.createElement("li");
+          li.style.listStyleType = "none";
+          li.appendChild(createTaskRow(cat, taskObj, idx, tasks.length));
+          ul.appendChild(li);
+        });
+      });
+    }
+
+    function saveTasks(category, tasks) {
+      localStorage.setItem(category, JSON.stringify(tasks));
+    }
+
+    function saveTask(category, taskObj) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      tasks.push(taskObj);
+      saveTasks(category, tasks);
+    }
+
+    function addTask(inputText) {
+      const cleaned = preprocessInput(inputText);
+      const words = cleaned.trim().split(" ");
+      let lastWord = words[words.length - 1];
+      lastWord = lastWord.replace(/[.,!?;:]+$/, "");
+      const category = extractValidCategory(lastWord);
+      if (!category) {
+        alert("Category not found at the end of the task. Please end your task with one of: " + categories.join(", "));
+        return;
+      }
+      let taskText = words.slice(0, words.length - 1).join(" ").trim();
+      taskText = taskText.replace(/[.,!?;:]+$/, "");
+      if (!taskText) {
+        alert("Task description is empty.");
+        return;
+      }
+      let parsedDate = chrono.parseDate(taskText);
+      const taskObj = { text: taskText, date: parsedDate ? parsedDate.toISOString() : null };
+      saveTask(category, taskObj);
+      loadTasks();
+    }
+
+    function addTaskFromGPT(taskDesc, category) {
+      const normalizedCategory = extractValidCategory(category);
+      if (!normalizedCategory) {
+        playBeep();
+        speakTextWithWebSpeech("Sorry, can you repeat please?");
+        transcriptDiv.textContent += "\n⚠️ GPT could not determine a valid category. Please say Home, Today, Urgent, or Shop.";
+        return;
+      }
+      let cleanedTask = extractTaskText(taskDesc, normalizedCategory);
+      let parsedDate = chrono.parseDate(cleanedTask);
+      const taskObj = { text: cleanedTask, date: parsedDate ? parsedDate.toISOString() : null };
+      saveTask(normalizedCategory, taskObj);
+      loadTasks();
+      transcriptDiv.textContent += `\n[Parsed: ${JSON.stringify({task: cleanedTask, category: normalizedCategory})}] → Task added.`;
+      gptAnswer.textContent = "";
+      // speakTextWithWebSpeech("Task added to " + normalizedCategory + " category.");
+    }
+
+    addManualBtn.onclick = () => {
+      const inputText = manualInput.value;
+      addTask(inputText);
+      manualInput.value = "";
+    };
+
+    // ====== BACKUP/RESTORE ======
+    exportTasksBtn.onclick = function() {
+      const backup = {};
+      categories.forEach(cat => {
+        backup[cat] = JSON.parse(localStorage.getItem(cat)) || [];
+      });
+      backupArea.value = JSON.stringify(backup, null, 2);
+    };
+    importTasksBtn.onclick = function() {
+      try {
+        const backup = JSON.parse(backupArea.value);
+        Object.entries(backup).forEach(([cat, tasks]) => {
+          if (categories.includes(cat)) {
+            localStorage.setItem(cat, JSON.stringify(tasks));
+          }
+        });
+        loadTasks();
+        alert("Tasks restored!");
+      } catch (e) {
+        alert("Invalid backup JSON.");
+      }
+    };
+
+    // ====== VOICE & GPT LOGIC ======
+    let isRecording = false;
+    let isConversation = false;
+    let stopConversationFlag = false;
+    let ttsSpeaking = false;
+    let micMuted = false;
+    let mediaRecorder, audioChunks = [];
+    let silenceTimeout, audioContext, analyser, source, stream;
+
+    speakBtn.onclick = async () => {
+      await unlockTTS();
+      if (isRecording || isConversation) return;
+      transcriptDiv.textContent = "";
+      gptAnswer.textContent = "";
+      await startVoiceInputForTask();
+    };
+
+    async function startVoiceInputForTask() {
+      playBeep();
+      await sleep(250); // Let beep finish before starting mic
+      await listenWithSilenceDetection(async (transcript) => {
+        addTask(transcript);
+        transcriptDiv.textContent += " → Task added.";
+        gptAnswer.textContent = "";
+      }, speakBtn);
+    }
+
+    handsFreeBtn.onclick = async () => {
+      await unlockTTS();
+      if (isRecording || isConversation) return;
+      transcriptDiv.textContent = "";
+      gptAnswer.textContent = "";
+      isConversation = true;
+      stopBtn.style.display = "inline-block";
+      interruptTTSBtn.style.display = "inline-block";
+      muteMicBtn.style.display = "inline-block";
+      await handsFreeConversation();
+    };
+
+    stopBtn.onclick = () => {
+      stopConversationFlag = true;
+      isConversation = false;
+      stopBtn.style.display = "none";
+      interruptTTSBtn.style.display = "none";
+      muteMicBtn.style.display = "none";
+      if (isRecording && mediaRecorder) {
+        mediaRecorder.stop();
+      }
+      cleanupAudio();
+    };
+
+    interruptTTSBtn.onclick = () => {
+      window.speechSynthesis.cancel();
+      ttsSpeaking = false;
+      // The mic will start listening for input after TTS is interrupted
+    };
+
+    muteMicBtn.onclick = () => {
+      micMuted = !micMuted;
+      muteMicBtn.classList.toggle("muted", micMuted);
+      muteMicBtn.textContent = micMuted ? "🔈 Unmute Mic" : "🔇 Mute Mic";
+    };
+
+    async function handsFreeConversation() {
+      let lastGptResponse = "";
+      stopConversationFlag = false;
+      isConversation = true;
+      stopBtn.style.display = "inline-block";
+      interruptTTSBtn.style.display = "inline-block";
+      muteMicBtn.style.display = "inline-block";
+      while (isConversation && !stopConversationFlag) {
+        if (micMuted) {
+          transcriptDiv.textContent = "Mic muted. Tap Unmute to continue.";
+          await new Promise(resolve => {
+            const handler = () => {
+              if (!micMuted) {
+                document.removeEventListener("click", handler);
+                resolve();
+              }
+            };
+            document.addEventListener("click", handler);
+          });
+          continue;
+        }
+        playBeep();
+        await sleep(250); // Let beep finish before starting mic
+        transcriptDiv.textContent = "Listening...";
+       let userInput = await listenOnceWithSilenceDetection(handsFreeBtn);
+
+// Handle empty or failed STT
+if (!userInput || !userInput.trim()) {
+  transcriptDiv.textContent = "No clear input. Listening again...";
+  await sleep(400);
+  playBeep();
+  await sleep(250);
+  continue;
+}
+
+
+        // Handle stop voice command
+        if (/^(stop|disconnect|goodbye|exit|cancel)$/i.test(userInput.trim())) {
+          await speakTextWithWebSpeech("Conversation ended.");
+          await sleep(400);
+          playBeep();
+          await sleep(250);
+          break;
+        }
+
+        gptLoading.style.display = "inline";
+if (userInput && userInput.trim().length > 0) {
+  transcriptDiv.textContent = `🗣️ You said: "${userInput.trim()}"\nThinking...`;
+} else {
+  transcriptDiv.textContent = "Thinking...";
+}
+
+        const preprocessedInput = preprocessInput(userInput);
+        const toParse = stripBeforeAddOrCreate(preprocessedInput);
+
+        let handled = false;
+        try {
+          const lower = toParse.trim().toLowerCase();
+  // Voice command: "delete task 3 in Shop", "delete task 2 from Home", or "delete task 1 Shop"
+  const deleteMatch = toParse.match(/(?:delete|remove)\s+task\s+(\d+)(?:\s+(?:in|from)\s+|\s+)([\w\s]+)/i);
+  if (deleteMatch) {
+    const number = parseInt(deleteMatch[1]);
+    const categoryRaw = deleteMatch[2];
+    const category = extractValidCategory(categoryRaw);
+
+    // For debugging: see console log
+    console.log("[VoiceDelete] Matched input:", toParse);
+    console.log("[VoiceDelete] Extracted number:", number, "Category:", category);
+
+    if (!category) {
+      await speakTextWithWebSpeech("Sorry, I couldn't identify the category. Try, for example, 'delete task 2 in Shop'.");
+    } else {
+      const success = deleteTaskByNumber(category, number);
+      if (success) {
+        await speakTextWithWebSpeech(`Deleted task number ${number} from ${category}.`);
+      } else {
+        await speakTextWithWebSpeech(`Couldn't find task number ${number} in ${category}.`);
+      }
+    }
+    handled = true;
+  }
+// Voice command: move task 2 from home to shop
+// Also supports: move task 2 from home category to shop category, etc.
+const moveMatch = toParse.match(
+  /move\s+task\s+(\d+)\s+from\s+([a-z\s]+?)(?:\s+category)?\s+to\s+([a-z\s]+?)(?:\s+category)?\b/i
+);
+if (moveMatch) {
+  const number = parseInt(moveMatch[1]);
+  const fromCategoryRaw = moveMatch[2];
+  const toCategoryRaw = moveMatch[3];
+  const fromCategory = extractValidCategory(fromCategoryRaw);
+  const toCategory = extractValidCategory(toCategoryRaw);
+
+  if (!fromCategory || !toCategory) {
+    await speakTextWithWebSpeech("Sorry, I couldn't identify one of the categories. Try something like 'move task 2 from Home to Shop category.'");
+  } else {
+    const success = moveTaskByNumber(fromCategory, number, toCategory);
+    if (success) {
+      await speakTextWithWebSpeech(`Moved task number ${number} from ${fromCategory} to ${toCategory}.`);
+    } else {
+      await speakTextWithWebSpeech(`Couldn't find task number ${number} in ${fromCategory}.`);
+    }
+  }
+  handled = true;
+}          
+          if (lower.startsWith("add ") || lower.startsWith("create ")) {
+            const result = await extractTaskAndCategoryWithGPT(toParse);
+            gptLoading.style.display = "none";
+            if (result && result.task && result.category) {
+              await speakTextWithWebSpeech("Task added to " + result.category + " category.");
+              await sleep(400);
+              playBeep();
+              await sleep(250);
+              addTaskFromGPT(result.task, result.category);
+              handled = true;
+            } else {
+              await speakTextWithWebSpeech("Sorry, can you repeat please.");
+              await sleep(400);
+              playBeep();
+              await sleep(250);
+              continue;
+            }
+          }
+        } catch (e) {
+          gptLoading.style.display = "none";
+          await speakTextWithWebSpeech("Sorry, can you repeat please.");
+          await sleep(400);
+          playBeep();
+          await sleep(250);
+          continue;
+        }
+
+        if (!handled) {
+          try {
+            const gptResponse = await askGpt(toParse);
+            gptLoading.style.display = "none";
+            lastGptResponse = gptResponse;
+            await speakTextWithWebSpeech(gptResponse);
+            await sleep(400);
+            playBeep();
+            await sleep(250);
+          } catch (e) {
+            gptLoading.style.display = "none";
+            await speakTextWithWebSpeech("Sorry, can you repeat please.");
+            await sleep(400);
+            playBeep();
+            await sleep(250);
+            continue;
+          }
+        }
+      }
+      isConversation = false;
+      stopBtn.style.display = "none";
+      interruptTTSBtn.style.display = "none";
+      muteMicBtn.style.display = "none";
+    }
+
+    async function listenWithSilenceDetection(callback, buttonElem) {
+  const ASSEMBLYAI_API_KEY = getAssemblyKey();
+  if (!ASSEMBLYAI_API_KEY) {
+    alert("Please enter and save your AssemblyAI API key.");
+    return;
+  }
+
+  const SILENCE_THRESHOLD = 0.05;         // Less sensitive to background noise
+  const SILENCE_DURATION = 3000;          // Wait 3 seconds of silence before stopping
+  const MIN_RECORDING_DURATION = 1500;    // Must record at least 1.5 seconds
+
+  isRecording = true;
+  audioChunks = [];
+  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.start();
+  const recordingStartTime = Date.now();
+let activeFrameCount = 0; // ✅ Add here
+  buttonElem.textContent = "⏹️ Stop Recording";
+  buttonElem.classList.add("recording");
+
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  source = audioContext.createMediaStreamSource(stream);
+  analyser = audioContext.createAnalyser();
+  source.connect(analyser);
+  analyser.fftSize = 2048;
+  const data = new Uint8Array(analyser.fftSize);
+
+function checkSilence() {
+  analyser.getByteTimeDomainData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) {
+    const normalized = (data[i] - 128) / 128;
+    sum += normalized * normalized;
+  }
+  const volume = Math.sqrt(sum / data.length);
+const SILENCE_THRESHOLD = Number(document.getElementById("silenceThresholdInput").value) || 0.05;
+  // ✅ Debounced detection logic
+  if (volume > SILENCE_THRESHOLD) {
+    activeFrameCount++;
+    if (activeFrameCount >= REQUIRED_ACTIVE_FRAMES) {
+      // Real speech detected; cancel any scheduled stop
+      if (silenceTimeout) {
+        clearTimeout(silenceTimeout);
+        silenceTimeout = null;
+      }
+    }
+  } else {
+    activeFrameCount = 0;
+
+    // Quit if silence is held long enough
+    if (!silenceTimeout && Date.now() - recordingStartTime > MIN_RECORDING_DURATION) {
+     const silenceMs = Number(document.getElementById("silenceDurationInput").value) || 3000;
+
+silenceTimeout = setTimeout(() => {
+  if (isRecording) {
+    mediaRecorder.stop();
+    cleanupAudio();
+  }
+}, silenceMs);
+
+    }
+  }
+
+  if (isRecording) {
+    requestAnimationFrame(checkSilence);
+  }
+}
+
+
+  requestAnimationFrame(checkSilence);
+
+  mediaRecorder.ondataavailable = e => {
+    audioChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = async () => {
+    isRecording = false;
+    buttonElem.textContent = buttonElem === speakBtn ? "🎙️ Speak" : "🤖 Hands Free";
+    buttonElem.classList.remove("recording");
+    cleanupAudio();
+
+    transcriptDiv.textContent = "Uploading and transcribing...";
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+
+    try {
+      const uploadRes = await fetch("https://api.assemblyai.com/v2/upload", {
+        method: "POST",
+        headers: { "authorization": ASSEMBLYAI_API_KEY },
+        body: audioBlob
+      });
+      const { upload_url } = await uploadRes.json();
+
+      const transcriptRes = await fetch("https://api.assemblyai.com/v2/transcript", {
+        method: "POST",
+        headers: {
+          "authorization": ASSEMBLYAI_API_KEY,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({ audio_url: upload_url })
+      });
+      const { id } = await transcriptRes.json();
+
+      let completed = false;
+      while (!completed) {
+        await new Promise(res => setTimeout(res, 2000));
+        const pollingRes = await fetch(`https://api.assemblyai.com/v2/transcript/${id}`, {
+          headers: { "authorization": ASSEMBLYAI_API_KEY }
+        });
+        const data = await pollingRes.json();
+
+ if (data.status === "completed") {
+  if (!data.text || data.text.trim().split(" ").length < 2) {
+    transcriptDiv.textContent = "Too short or unclear. Ignored.";
+    await callback(""); // Call callback with empty string to continue
+    completed = true;
+    return;
+  }
+  transcriptDiv.textContent = data.text;
+  await callback(data.text);
+  completed = true;
+}
+
+        else if (data.status === "failed") {
+          transcriptDiv.textContent = "Transcription failed.";
+          completed = true;
+        } else {
+          transcriptDiv.textContent = "Transcribing...";
+        }
+      }
+    } catch (err) {
+      transcriptDiv.textContent = "Error: " + err.message;
+    }
+  };
+}
+
+    async function listenOnceWithSilenceDetection(buttonElem) {
+      return new Promise(resolve => {
+        listenWithSilenceDetection((transcript) => resolve(transcript), buttonElem);
+      });
+    }
+
+    async function extractTaskAndCategoryWithGPT(userInput) {
+      const OPENAI_API_KEY = getOpenAIKey();
+      if (!OPENAI_API_KEY) {
+        alert("Please enter and save your OpenAI API key.");
+        return null;
+      }
+      const validCategories = categories;
+      const systemPrompt =
+        "You are an API backend. ALWAYS use the extract_task function to add a task and category. NEVER reply conversationally. " +
+        "Only use these categories: " + validCategories.join(", ") + ". " +
+        "When returning the category, ONLY use exactly one of these. Do not add extra words like 'category', 'list', or 'task'. " +
+        "If you cannot determine a valid category, use an empty string for category.";
+
+      const functionSpec = {
+        name: "extract_task",
+        description: "Extract a single task and its category from the user's request.",
+        parameters: {
+          type: "object",
+          properties: {
+            task: { type: "string", description: "The task description" },
+            category: { type: "string", enum: validCategories, description: "The category for the task" }
+          },
+          required: ["task", "category"]
+        }
+      };
+
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + OPENAI_API_KEY
+          },
+          body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userInput }
+            ],
+            tools: [
+              {
+                type: "function",
+                function: functionSpec
+              }
+            ],
+            tool_choice: { type: "function", function: { name: "extract_task" } }
+          })
+        });
+        const data = await res.json();
+        if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.tool_calls) {
+          const args = data.choices[0].message.tool_calls[0].function.arguments;
+          try {
+            return JSON.parse(args);
+          } catch (e) {
+            transcriptDiv.textContent += `\n[Function call parse error: ${args}]`;
+            return null;
+          }
+        } else {
+          transcriptDiv.textContent += `\n[No tool_calls: ${JSON.stringify(data)}]`;
+          return null;
+        }
+      } catch (err) {
+        transcriptDiv.textContent += `\n[Function call error: ${err.message}]`;
+        return null;
+      }
+    }
+
+    function cleanupAudio() {
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      if (silenceTimeout) {
+        clearTimeout(silenceTimeout);
+        silenceTimeout = null;
+      }
+    }
+
+    async function askGpt(userQuestion) {
+      const OPENAI_API_KEY = getOpenAIKey();
+      if (!OPENAI_API_KEY) {
+        alert("Please enter and save your OpenAI API key.");
+        return "";
+      }
+      gptAnswer.textContent = "";
+      const tasks = getAllTasks();
+let maxTokens = 200; // ✅ Keep answers short by default
+
+// Check if the user is asking for a detailed task list
+if (/list all|show all|everything|all tasks|in category/i.test(userQuestion)) {
+  maxTokens = 1000; // ✅ Allow longer replies
+  prompt += "\nPlease provide a full, detailed list if applicable.";  // Optional: enhance GPT behavior
+}
+      
+let prompt = `Here are my tasks, grouped and numbered per category:\n`;
+
+categories.forEach((cat) => {
+  const catTasks = tasks.filter(t => t.category === cat);
+  if (catTasks.length > 0) {
+    prompt += `\n${cat}:\n` + catTasks.map((t, i) =>
+      `${i + 1}. ${t.text}${t.date ? ' (' + t.date.slice(0, 10) + ')' : ''}`
+    ).join("\n") + "\n";
+  }
+});
+
+prompt += `\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences. Only give a full list or long explanation if I specifically ask for "all tasks" or a full breakdown.`;
+
+            
+      try {
+const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + OPENAI_API_KEY
+  },
+  body: JSON.stringify({
+    model: "gpt-4o",
+    messages: [
+      {role: "system", content: "You are a helpful personal task assistant."},
+      {role: "user", content: prompt}
+    ],
+    max_tokens: maxTokens   // ✅ This line controls GPT's length
+  })
+});
+        
+        const data = await res.json();
+        let answer = "";
+        if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+          answer = data.choices[0].message.content.trim();
+          gptAnswer.textContent = answer;
+        } else if (data.error) {
+          answer = "API Error: " + data.error.message;
+          gptAnswer.textContent = answer;
+        } else {
+          answer = "No response from GPT.";
+          gptAnswer.textContent = answer;
+        }
+        return answer;
+      } catch (err) {
+        gptAnswer.textContent = "Request failed: " + err.message;
+        return "Request failed: " + err.message;
+      }
+    }
+
+    
+    // Platform-specific voice selection
+// Restore silence control settings from localStorage
+window.addEventListener("load", () => {
+  const silenceThresholdInput = document.getElementById("silenceThresholdInput");
+  const silenceDurationInput = document.getElementById("silenceDurationInput");
+
+  silenceThresholdInput.value = localStorage.getItem("silenceThreshold") || "0.05";
+  silenceDurationInput.value = localStorage.getItem("silenceDuration") || "3000";
+});
+
+// Save when user changes values
+document.getElementById("silenceThresholdInput").addEventListener("input", e => {
+  localStorage.setItem("silenceThreshold", e.target.value);
+});
+document.getElementById("silenceDurationInput").addEventListener("input", e => {
+  localStorage.setItem("silenceDuration", e.target.value);
+});
+
+    //JD start
+function getBestVoice() {
+  const voices = speechSynthesis.getVoices();
+  const select = document.getElementById("voiceSelect");
+  if (select && voices.length > 0) {
+    const selectedIndex = parseInt(select.value, 10);
+    return voices[selectedIndex] || voices[0];
+  }
+  return voices[0];
+}
+
+  //JD end
+
+    // Interruptible TTS
+   function speakTextWithWebSpeech(text) {
+  return new Promise((resolve) => {
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      alert("Speech Synthesis not supported in this browser.");
+      resolve();
+      return;
+    }
+
+    // Wait for voices to load if needed
+    const speak = () => {
+      const utter = new SpeechSynthesisUtterance(text);
+// Use default system voice (browser determines best)
+      utter.pitch = 1;
+      utter.rate = 0.97;
+      utter.onend = () => resolve();
+      utter.onerror = () => resolve();
+      synth.speak(utter);
+    };
+
+    if (speechSynthesis.getVoices().length === 0) {
+      // Voices not loaded yet
+      speechSynthesis.onvoiceschanged = () => {
+        speak();
+      };
+    } else {
+      // Voices already loaded
+      speak();
+    }
+  });
+}
+
+
+    function getAllTasks() {
+      const allTasks = [];
+      categories.forEach(cat => {
+        const catTasks = JSON.parse(localStorage.getItem(cat)) || [];
+        catTasks.forEach(taskObj => {
+          allTasks.push({ ...taskObj, category: cat });
+        });
+      });
+      return allTasks;
+    }
+
+    function showOnlyCategory(cat) {
+      categories.forEach(category => {
+        document.getElementById(category).classList.toggle('hidden', category !== cat);
+      });
+      showAllBtn.style.display = "inline-block";
+    }
+
+    function showAllCategories() {
+      categories.forEach(category => {
+        document.getElementById(category).classList.remove('hidden');
+      });
+      showAllBtn.style.display = "none";
+      loadTasks();
+    }
+
+    function createTaskRow(category, taskObj, idx, total) {
+      const row = document.createElement("div");
+      row.className = "task-row";
+
+const taskText = document.createElement("span");
+taskText.className = "task-text";
+
+// 👇 Add task number (#1, #2, etc. per category)
+const taskNumber = idx + 1;
+taskText.textContent = `${taskNumber}. ${taskObj.text}`;
+
+      
+      if (taskObj.date) {
+        const badge = document.createElement("span");
+        badge.className = "date-badge";
+        const d = new Date(taskObj.date);
+        badge.textContent = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+        taskText.appendChild(badge);
+      }
+      const controls = document.createElement("div");
+      controls.className = "task-controls";
+      const upBtn = document.createElement("button");
+      upBtn.textContent = "⬆️";
+      upBtn.title = "Move Up";
+      upBtn.disabled = idx === 0;
+      upBtn.onclick = () => moveTask(category, idx, idx - 1);
+      const downBtn = document.createElement("button");
+      downBtn.textContent = "⬇️";
+      downBtn.title = "Move Down";
+      downBtn.disabled = idx === total - 1;
+      downBtn.onclick = () => moveTask(category, idx, idx + 1);
+      const topBtn = document.createElement("button");
+      topBtn.textContent = "⏫";
+      topBtn.title = "Move to Top";
+      topBtn.disabled = idx === 0;
+      topBtn.onclick = () => moveTask(category, idx, 0);
+      const bottomBtn = document.createElement("button");
+      bottomBtn.textContent = "⏬";
+      bottomBtn.title = "Move to Bottom";
+      bottomBtn.disabled = idx === total - 1;
+      bottomBtn.onclick = () => moveTask(category, idx, total - 1);
+      const dropdown = document.createElement("div");
+      dropdown.className = "dropdown";
+      const dotsBtn = document.createElement("button");
+      dotsBtn.textContent = "⋮";
+      dotsBtn.title = "More";
+      dotsBtn.onclick = (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.dropdown').forEach(d => {
+          if (d !== dropdown) d.classList.remove('show');
+        });
+        dropdown.classList.toggle("show");
+      };
+      const dropdownContent = document.createElement("div");
+      dropdownContent.className = "dropdown-content";
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Edit";
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        dropdown.classList.remove("show");
+        editTask(category, idx, taskText, row);
+      };
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        dropdown.classList.remove("show");
+        deleteTask(category, idx);
+      };
+      dropdownContent.appendChild(editBtn);
+      dropdownContent.appendChild(deleteBtn);
+      dropdown.appendChild(dotsBtn);
+      dropdown.appendChild(dropdownContent);
+      controls.appendChild(upBtn);
+      controls.appendChild(downBtn);
+      controls.appendChild(topBtn);
+      controls.appendChild(bottomBtn);
+      controls.appendChild(dropdown);
+      row.appendChild(taskText);
+      row.appendChild(controls);
+      document.addEventListener("click", () => dropdown.classList.remove('show'));
+      return row;
+    }
+
+    function moveTask(category, fromIdx, toIdx) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      if (fromIdx < 0 || toIdx < 0 || fromIdx >= tasks.length || toIdx >= tasks.length) return;
+      const [moved] = tasks.splice(fromIdx, 1);
+      tasks.splice(toIdx, 0, moved);
+      saveTasks(category, tasks);
+      loadTasks();
+    }
+
+    function deleteTask(category, idx) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      tasks.splice(idx, 1);
+      saveTasks(category, tasks);
+      loadTasks();
+    }
+function deleteTaskByNumber(category, taskNumber) {
+  const tasks = JSON.parse(localStorage.getItem(category)) || [];
+  const index = taskNumber - 1; // Convert from 1-based (spoken) to 0-based index
+  if (index < 0 || index >= tasks.length) return false;
+  tasks.splice(index, 1);
+  saveTasks(category, tasks);
+  loadTasks();
+  return true; // Deletion was successful
+}    
+
+function moveTaskByNumber(fromCategory, taskNumber, toCategory) {
+  const fromTasks = JSON.parse(localStorage.getItem(fromCategory)) || [];
+  const index = taskNumber - 1; // 1-based to 0-based index
+  if (index < 0 || index >= fromTasks.length) return false;
+  const [movedTask] = fromTasks.splice(index, 1);
+  saveTasks(fromCategory, fromTasks);
+
+  // Add to destination category
+  const toTasks = JSON.parse(localStorage.getItem(toCategory)) || [];
+  toTasks.push(movedTask);
+  saveTasks(toCategory, toTasks);
+
+  loadTasks();
+  return true;
+}    
+    function editTask(category, idx, taskTextElem, row) {
+      const tasks = JSON.parse(localStorage.getItem(category)) || [];
+      const oldTaskObj = tasks[idx];
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "edit-input";
+      input.value = oldTaskObj.text;
+      taskTextElem.replaceWith(input);
+      input.focus();
+      function saveEdit() {
+        const newText = input.value.trim();
+        if (newText) {
+          let parsedDate = chrono.parseDate(newText);
+          tasks[idx] = { text: newText, date: parsedDate ? parsedDate.toISOString() : null };
+          saveTasks(category, tasks);
+          loadTasks();
+        } else {
+          alert("Task cannot be empty.");
+        }
+      }
+      input.onkeydown = (e) => {
+        if (e.key === "Enter") saveEdit();
+        if (e.key === "Escape") loadTasks();
+      };
+      input.onblur = saveEdit;
+    }
+
+    loadTasks();
+  </script>
+</body>
+</html>
