@@ -858,11 +858,8 @@ categories.forEach((cat) => {
   }
 });
 
+prompt += `\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences. Only give a full list or long explanation if I specifically ask for "all tasks" or a full breakdown.`;
 
-      
-User question: ${userQuestion}
-
-Answer in 1–2 short sentences. Only give a full list or long explanation if I specifically ask for "all tasks" or a full breakdown.`;
             
       try {
 const res = await fetch("https://api.openai.com/v1/chat/completions", {
