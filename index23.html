@@ -984,9 +984,15 @@ function getBestVoice() {
     function createTaskRow(category, taskObj, idx, total) {
       const row = document.createElement("div");
       row.className = "task-row";
-      const taskText = document.createElement("span");
-      taskText.className = "task-text";
-      taskText.textContent = taskObj.text;
+
+const taskText = document.createElement("span");
+taskText.className = "task-text";
+
+// 👇 Add task number (#1, #2, etc. per category)
+const taskNumber = idx + 1;
+taskText.textContent = `${taskNumber}. ${taskObj.text}`;
+
+      
       if (taskObj.date) {
         const badge = document.createElement("span");
         badge.className = "date-badge";
