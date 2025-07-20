@@ -26,9 +26,6 @@ button {
   line-height: 1.4;
   width: auto;
 }
-
-    
-    
     #speakBtn.recording, #handsFreeBtn.recording { background: #d32f2f; color: #fff; }
     #stopBtn, #interruptTTSBtn, #muteMicBtn { margin-left: 10px; }
     #transcript { margin-top: 20px; border: 1px solid #ccc; padding: 10px; min-height: 30px; white-space: pre-wrap; }
@@ -606,7 +603,7 @@ if (deleteMatch) {
 
 if (!handled) {
   try {
-    // this only runs if no other handler (like delete) was triggered
+    // this only runs if no command was handled like "add task" or "delete task"
     const gptResponse = await askGpt(toParse);
     gptLoading.style.display = "none";
     lastGptResponse = gptResponse;
@@ -622,18 +619,12 @@ if (!handled) {
     await sleep(250);
   }
 } else {
-  // ✅ If handled by delete/add/etc., skip GPT request
+  // GPT was skipped because a task was handled
   gptLoading.style.display = "none";
 }
 
-          catch (e) {
-            gptLoading.style.display = "none";
-            await speakTextWithWebSpeech("Sorry, can you repeat please.");
-            await sleep(400);
-            playBeep();
-            await sleep(250);
-            continue;
-          }
+
+        
         }
       }
       isConversation = false;
