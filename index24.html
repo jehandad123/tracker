@@ -626,14 +626,6 @@ if (!handled) {
   gptLoading.style.display = "none";
 }
 
-
-        
-            gptLoading.style.display = "none";
-            lastGptResponse = gptResponse;
-            await speakTextWithWebSpeech(gptResponse);
-            await sleep(400);
-            playBeep();
-            await sleep(250);
           } catch (e) {
             gptLoading.style.display = "none";
             await speakTextWithWebSpeech("Sorry, can you repeat please.");
