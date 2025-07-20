@@ -604,9 +604,30 @@ if (deleteMatch) {
           continue;
         }
 
-        if (!handled) {
-          try {
-            const gptResponse = await askGpt(toParse);
+if (!handled) {
+  try {
+    // this only runs if no other handler (like delete) was triggered
+    const gptResponse = await askGpt(toParse);
+    gptLoading.style.display = "none";
+    lastGptResponse = gptResponse;
+    await speakTextWithWebSpeech(gptResponse);
+    await sleep(400);
+    playBeep();
+    await sleep(250);
+  } catch (e) {
+    gptLoading.style.display = "none";
+    await speakTextWithWebSpeech("Sorry, can you repeat please.");
+    await sleep(400);
+    playBeep();
+    await sleep(250);
+  }
+} else {
+  // ✅ If handled by delete/add/etc., skip GPT request
+  gptLoading.style.display = "none";
+}
+
+
+        
             gptLoading.style.display = "none";
             lastGptResponse = gptResponse;
             await speakTextWithWebSpeech(gptResponse);
