@@ -411,7 +411,33 @@ function unlockTTS() {
       let parsedDate = chrono.parseDate(taskText);
       const taskObj = { text: taskText, date: parsedDate ? parsedDate.toISOString() : null };
       saveTask(category, taskObj);
-      loadTasks();
+      
+function correctTranscriptNames(text) {
+  const corrections = [
+    { wrong: ["shravan"], correct: "Sravan" },
+    { wrong: ["arsh", "arch"], correct: "Arsshh" },
+    { wrong: ["courtney"], correct: "Cortney" },
+    { wrong: ["brendan"], correct: "Brandon" },
+    { wrong: ["migel"], correct: "Miguel" },
+    { wrong: ["shazip", "shazeb"], correct: "Shahzeb" },
+    { wrong: ["mareen", "marine", "meh reen"], correct: "Mehreen" },
+    { wrong: ["humza"], correct: "Hamza" },
+    { wrong: ["shah rose"], correct: "Shahroz" },
+    { wrong: ["maywish", "meh wish"], correct: "Mehwish" }
+  ];
+
+  let corrected = text;
+  corrections.forEach(entry => {
+    entry.wrong.forEach(w => {
+      const regex = new RegExp("\b" + w + "\b", "gi");
+      corrected = corrected.replace(regex, entry.correct);
+    });
+  });
+  return corrected;
+}
+
+
+loadTasks();
     }
 
     function addTaskFromGPT(taskDesc, category) {
