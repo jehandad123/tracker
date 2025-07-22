@@ -233,6 +233,10 @@ input[type=text] {
   <textarea id="backupArea" style="width:100%;height:80px;" placeholder="Backup JSON will appear here. Paste here to restore."></textarea>
   <!-- BEEP AUDIO ELEMENT REMOVED -->
 
+
+
+
+  
   <script>
     // ====== CONFIG ======
     const SILENCE_THRESHOLD = Number(document.getElementById("silenceThresholdInput").value) || 0.05;
@@ -278,7 +282,30 @@ const REQUIRED_ACTIVE_FRAMES = 5; // ✅ How many frames need to be "loud" to tr
     const importTasksBtn = document.getElementById("importTasksBtn");
     const backupArea = document.getElementById("backupArea");
 
-    const categories = ["Home", "Today", "Urgent", "Shop"];
+const categories = ["Home", "Today", "Urgent", "Shop"];
+
+// ✅ Name correction map and logic (add this block)
+const nameCorrections = {
+  "Shravan": "Sravan",
+  "Courtney": "Cortney",
+  "Brendan": "Brandon",
+  "Arsh": "Arsshh",
+  "Migel": "Miguel",
+  "Seda gatt": "Sedaghat"
+};
+
+function correctNames(text) {
+  for (const wrong in nameCorrections) {
+    const corrected = nameCorrections[wrong];
+    const regex = new RegExp(`\\b${wrong}\\b`, "gi");
+    text = text.replace(regex, corrected);
+  }
+  return text;
+}
+
+// ==== TTS Unlock Logic ====
+let ttsUnlocked = false;
+function unlockTTS() {
 
     // ==== TTS Unlock Logic ====
     let ttsUnlocked = false;
@@ -780,8 +807,10 @@ const { id } = await transcriptRes.json();
     completed = true;
     return;
   }
-  transcriptDiv.textContent = data.text;
-  await callback(data.text);
+let transcriptText = correctNames(data.text); // ✅ Fix name misspellings
+transcriptDiv.textContent = transcriptText;    // ✅ Show updated version
+await callback(transcriptText);                // ✅ Continue with fixed text
+
   completed = true;
 }
 
