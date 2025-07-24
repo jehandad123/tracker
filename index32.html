@@ -1102,56 +1102,56 @@ const res = await fetch("https://api.openai.com/v1/chat/completions", {
         let answer = "";
         if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
           answer = data.choices[0].message.content.trim();
-// Step 1: Remove leading "XYZ is:" or "ABC are:"
-let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
+let cleanedAnswer = answer.replace(/^.*?\b(is|are):/i, '').trim();
 
-// Step 2: Split into chunks using punctuation and commas
+// Split the answer into bullet points, by newlines, bullets, or numbering.
 let lines = cleanedAnswer
-  .split(/[\n\.!?]+/)  // now splits on commas too
+  .split(/(?:\r?\n|(?:^|[^\d])[\*\-\•]\s+|\d+\.\s+)+/)
   .map(line => line.trim())
-  .filter(line => line.length > 2 && !/^ok$/i.test(line));  // filter out noise
+  .filter(line => line.length > 2 && !/^ok$/i.test(line));
 
-// Step 3: Format as numbered bullets
-let formattedAnswer = lines.map(line => `• ${line}`).join('<br>');
+// Convert to a real unordered HTML list.
+let formattedAnswer = '<ul>' + lines.map(
+  line => `<li>${line}</li>`
+).join('') + '</ul>';
 
-// Step 4: Display nicely
 gptAnswer.innerHTML = formattedAnswer;
-
 
 
         } else if (data.error) {
           answer = "API Error: " + data.error.message;
-   // Step 1: Remove leading "XYZ is:" or "ABC are:"
-let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
+  let cleanedAnswer = answer.replace(/^.*?\b(is|are):/i, '').trim();
 
-// Step 2: Split into chunks using punctuation and commas
+// Split the answer into bullet points, by newlines, bullets, or numbering.
 let lines = cleanedAnswer
-  .split(/[\n\.!?]+/)  // now splits on commas too
+  .split(/(?:\r?\n|(?:^|[^\d])[\*\-\•]\s+|\d+\.\s+)+/)
   .map(line => line.trim())
-  .filter(line => line.length > 2 && !/^ok$/i.test(line));  // filter out noise
+  .filter(line => line.length > 2 && !/^ok$/i.test(line));
 
-// Step 3: Format as numbered bullets
-let formattedAnswer = lines.map(line => `• ${line}`).join('<br>');
+// Convert to a real unordered HTML list.
+let formattedAnswer = '<ul>' + lines.map(
+  line => `<li>${line}</li>`
+).join('') + '</ul>';
 
-// Step 4: Display nicely
 gptAnswer.innerHTML = formattedAnswer;
+
 
 
         } else {
           answer = "No response from GPT.";
-// Step 1: Remove leading "XYZ is:" or "ABC are:"
-let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
+let cleanedAnswer = answer.replace(/^.*?\b(is|are):/i, '').trim();
 
-// Step 2: Split into chunks using punctuation and commas
+// Split the answer into bullet points, by newlines, bullets, or numbering.
 let lines = cleanedAnswer
-  .split(/[\n\.!?]+/)  // now splits on commas too
+  .split(/(?:\r?\n|(?:^|[^\d])[\*\-\•]\s+|\d+\.\s+)+/)
   .map(line => line.trim())
-  .filter(line => line.length > 2 && !/^ok$/i.test(line));  // filter out noise
+  .filter(line => line.length > 2 && !/^ok$/i.test(line));
 
-// Step 3: Format as numbered bullets
-let formattedAnswer = lines.map(line => `• ${line}`).join('<br>');
+// Convert to a real unordered HTML list.
+let formattedAnswer = '<ul>' + lines.map(
+  line => `<li>${line}</li>`
+).join('') + '</ul>';
 
-// Step 4: Display nicely
 gptAnswer.innerHTML = formattedAnswer;
 
 
