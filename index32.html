@@ -1102,31 +1102,46 @@ const res = await fetch("https://api.openai.com/v1/chat/completions", {
         let answer = "";
         if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
           answer = data.choices[0].message.content.trim();
-         const bullets = answer
-  .split(/\n+/)
-  .filter(line => line.trim() !== '')
-  .map(line => `<li>${line.replace(/^[-*•\d.]+\s*/, '').trim()}</li>`)
+         const splitLines = answer
+  // First try to split by newline or period+space (end of sentence)
+  .split(/(?:\n+|\.\s+)/)
+  .map(line => line.trim())
+  .filter(line => line && !/^\s*$/.test(line)); // remove empty lines
+
+const numberedList = splitLines
+  .map((line, index) => `<li><strong>${index + 1}.</strong> ${line.replace(/^[-*•\d.]+\s*/, '')}</li>`)
   .join('');
 
-gptAnswer.innerHTML = `<ul>${bullets}</ul>`;
+gptAnswer.innerHTML = `<ol>${numberedList}</ol>`;
+
         } else if (data.error) {
           answer = "API Error: " + data.error.message;
-         const bullets = answer
-  .split(/\n+/)
-  .filter(line => line.trim() !== '')
-  .map(line => `<li>${line.replace(/^[-*•\d.]+\s*/, '').trim()}</li>`)
+         const splitLines = answer
+  // First try to split by newline or period+space (end of sentence)
+  .split(/(?:\n+|\.\s+)/)
+  .map(line => line.trim())
+  .filter(line => line && !/^\s*$/.test(line)); // remove empty lines
+
+const numberedList = splitLines
+  .map((line, index) => `<li><strong>${index + 1}.</strong> ${line.replace(/^[-*•\d.]+\s*/, '')}</li>`)
   .join('');
 
-gptAnswer.innerHTML = `<ul>${bullets}</ul>`;
+gptAnswer.innerHTML = `<ol>${numberedList}</ol>`;
+
         } else {
           answer = "No response from GPT.";
-         const bullets = answer
-  .split(/\n+/)
-  .filter(line => line.trim() !== '')
-  .map(line => `<li>${line.replace(/^[-*•\d.]+\s*/, '').trim()}</li>`)
+        const splitLines = answer
+  // First try to split by newline or period+space (end of sentence)
+  .split(/(?:\n+|\.\s+)/)
+  .map(line => line.trim())
+  .filter(line => line && !/^\s*$/.test(line)); // remove empty lines
+
+const numberedList = splitLines
+  .map((line, index) => `<li><strong>${index + 1}.</strong> ${line.replace(/^[-*•\d.]+\s*/, '')}</li>`)
   .join('');
 
-gptAnswer.innerHTML = `<ul>${bullets}</ul>`;
+gptAnswer.innerHTML = `<ol>${numberedList}</ol>`;
+
         }
         return answer;
       } catch (err) {
