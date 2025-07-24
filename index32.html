@@ -39,23 +39,6 @@
       font-size: 24px;
       margin-top: 24px;
     }
-
-    //JD start
-    #gptAnswer::before {
-  content: "🤖 ";
-  font-weight: bold;
-}
-#transcript::before {
-  content: "🎙️ ";
-  font-weight: bold;
-}
-#gptAnswer, #transcript {
-  border: 1px solid #ccc;
-  font-size: 18px;
-  padding: 12px;
-  background: #fffef0;
-}
-//JD end
     
     #transcript, #gptAnswer {
       margin-top: 20px;
@@ -1119,13 +1102,31 @@ const res = await fetch("https://api.openai.com/v1/chat/completions", {
         let answer = "";
         if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
           answer = data.choices[0].message.content.trim();
-          gptAnswer.textContent = answer;
+         const bullets = answer
+  .split(/\n+/)
+  .filter(line => line.trim() !== '')
+  .map(line => `<li>${line.replace(/^[-*•\d.]+\s*/, '').trim()}</li>`)
+  .join('');
+
+gptAnswer.innerHTML = `<ul>${bullets}</ul>`;
         } else if (data.error) {
           answer = "API Error: " + data.error.message;
-          gptAnswer.textContent = answer;
+         const bullets = answer
+  .split(/\n+/)
+  .filter(line => line.trim() !== '')
+  .map(line => `<li>${line.replace(/^[-*•\d.]+\s*/, '').trim()}</li>`)
+  .join('');
+
+gptAnswer.innerHTML = `<ul>${bullets}</ul>`;
         } else {
           answer = "No response from GPT.";
-          gptAnswer.textContent = answer;
+         const bullets = answer
+  .split(/\n+/)
+  .filter(line => line.trim() !== '')
+  .map(line => `<li>${line.replace(/^[-*•\d.]+\s*/, '').trim()}</li>`)
+  .join('');
+
+gptAnswer.innerHTML = `<ul>${bullets}</ul>`;
         }
         return answer;
       } catch (err) {
