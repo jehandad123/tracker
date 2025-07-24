@@ -40,13 +40,30 @@
       margin-top: 24px;
     }
 
+    //JD start
+    #gptAnswer::before {
+  content: "🤖 ";
+  font-weight: bold;
+}
+#transcript::before {
+  content: "🎙️ ";
+  font-weight: bold;
+}
+#gptAnswer, #transcript {
+  border: 1px solid #ccc;
+  font-size: 18px;
+  padding: 12px;
+  background: #fffef0;
+}
+//JD end
+    
     #transcript, #gptAnswer {
       margin-top: 20px;
       padding: 16px;
       border-radius: 6px;
       min-height: 30px;
-      background: #f3f3f3;
-      font-size: 20px;
+      background: #e0f7fa;
+      font-size: 18px;
     }
 
     .category ul {
