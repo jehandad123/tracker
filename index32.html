@@ -1107,12 +1107,12 @@ let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
 
 // Step 2: Split into chunks using punctuation and commas
 let lines = cleanedAnswer
-  .split(/[\n\.!?\,]+/)  // now splits on commas too
+  .split(/[\n\.!?]+/)  // now splits on commas too
   .map(line => line.trim())
   .filter(line => line.length > 2 && !/^ok$/i.test(line));  // filter out noise
 
 // Step 3: Format as numbered bullets
-let formattedAnswer = lines.map((line, idx) => `${idx + 1}. ${line}`).join('<br>');
+let formattedAnswer = lines.map(line => `• ${line}`).join('<br>');
 
 // Step 4: Display nicely
 gptAnswer.innerHTML = formattedAnswer;
@@ -1121,20 +1121,21 @@ gptAnswer.innerHTML = formattedAnswer;
 
         } else if (data.error) {
           answer = "API Error: " + data.error.message;
-     // Step 1: Remove leading "XYZ is:" or "ABC are:"
+   // Step 1: Remove leading "XYZ is:" or "ABC are:"
 let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
 
 // Step 2: Split into chunks using punctuation and commas
 let lines = cleanedAnswer
-  .split(/[\n\.!?\,]+/)  // now splits on commas too
+  .split(/[\n\.!?]+/)  // now splits on commas too
   .map(line => line.trim())
   .filter(line => line.length > 2 && !/^ok$/i.test(line));  // filter out noise
 
 // Step 3: Format as numbered bullets
-let formattedAnswer = lines.map((line, idx) => `${idx + 1}. ${line}`).join('<br>');
+let formattedAnswer = lines.map(line => `• ${line}`).join('<br>');
 
 // Step 4: Display nicely
 gptAnswer.innerHTML = formattedAnswer;
+
 
         } else {
           answer = "No response from GPT.";
@@ -1143,15 +1144,16 @@ let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
 
 // Step 2: Split into chunks using punctuation and commas
 let lines = cleanedAnswer
-  .split(/[\n\.!?\,]+/)  // now splits on commas too
+  .split(/[\n\.!?]+/)  // now splits on commas too
   .map(line => line.trim())
   .filter(line => line.length > 2 && !/^ok$/i.test(line));  // filter out noise
 
 // Step 3: Format as numbered bullets
-let formattedAnswer = lines.map((line, idx) => `${idx + 1}. ${line}`).join('<br>');
+let formattedAnswer = lines.map(line => `• ${line}`).join('<br>');
 
 // Step 4: Display nicely
 gptAnswer.innerHTML = formattedAnswer;
+
 
         }
         return answer;
