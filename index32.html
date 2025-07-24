@@ -1102,50 +1102,56 @@ const res = await fetch("https://api.openai.com/v1/chat/completions", {
         let answer = "";
         if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
           answer = data.choices[0].message.content.trim();
-   const cleanedAnswer = answer.replace(/^here (are|is)[^:]*:/i, ''); // remove "Here are your tasks:"
-const lines = cleanedAnswer
-  .split(/[\n\.!\?]+/) // split by newlines, period, exclamation or question
-  .map(line => line.trim())
-  .filter(line => line.length > 3); // ignore tiny fragments
+// Clean up GPT's intro phrases
+let cleanedAnswer = answer.replace(/^(here (are|is)[^:]*:)/i, '').trim();
 
-let formattedAnswer = '';
-lines.forEach((line, index) => {
-  formattedAnswer += `${index + 1}. ${line}<br>`;
-});
+// Split smartly — by newline or sentence-ending punctuation
+let lines = cleanedAnswer
+  .split(/[\n\.!?]+/)  // split by newlines or sentence-ending punctuation
+  .map(line => line.trim())  // remove leading/trailing whitespace
+  .filter(line => line.length > 3 && !/^ok$/i.test(line));  // skip empty/short/“ok” lines
 
+// Format into numbered list
+let formattedAnswer = lines.map((line, idx) => `${idx + 1}. ${line}`).join('<br>');
+
+// Show the result
 gptAnswer.innerHTML = formattedAnswer;
 
 
         } else if (data.error) {
           answer = "API Error: " + data.error.message;
-       const cleanedAnswer = answer.replace(/^here (are|is)[^:]*:/i, ''); // remove "Here are your tasks:"
-const lines = cleanedAnswer
-  .split(/[\n\.!\?]+/) // split by newlines, period, exclamation or question
-  .map(line => line.trim())
-  .filter(line => line.length > 3); // ignore tiny fragments
+       // Clean up GPT's intro phrases
+let cleanedAnswer = answer.replace(/^(here (are|is)[^:]*:)/i, '').trim();
 
-let formattedAnswer = '';
-lines.forEach((line, index) => {
-  formattedAnswer += `${index + 1}. ${line}<br>`;
-});
+// Split smartly — by newline or sentence-ending punctuation
+let lines = cleanedAnswer
+  .split(/[\n\.!?]+/)  // split by newlines or sentence-ending punctuation
+  .map(line => line.trim())  // remove leading/trailing whitespace
+  .filter(line => line.length > 3 && !/^ok$/i.test(line));  // skip empty/short/“ok” lines
 
+// Format into numbered list
+let formattedAnswer = lines.map((line, idx) => `${idx + 1}. ${line}`).join('<br>');
+
+// Show the result
 gptAnswer.innerHTML = formattedAnswer;
 
 
 
         } else {
           answer = "No response from GPT.";
-     const cleanedAnswer = answer.replace(/^here (are|is)[^:]*:/i, ''); // remove "Here are your tasks:"
-const lines = cleanedAnswer
-  .split(/[\n\.!\?]+/) // split by newlines, period, exclamation or question
-  .map(line => line.trim())
-  .filter(line => line.length > 3); // ignore tiny fragments
+  // Clean up GPT's intro phrases
+let cleanedAnswer = answer.replace(/^(here (are|is)[^:]*:)/i, '').trim();
 
-let formattedAnswer = '';
-lines.forEach((line, index) => {
-  formattedAnswer += `${index + 1}. ${line}<br>`;
-});
+// Split smartly — by newline or sentence-ending punctuation
+let lines = cleanedAnswer
+  .split(/[\n\.!?]+/)  // split by newlines or sentence-ending punctuation
+  .map(line => line.trim())  // remove leading/trailing whitespace
+  .filter(line => line.length > 3 && !/^ok$/i.test(line));  // skip empty/short/“ok” lines
 
+// Format into numbered list
+let formattedAnswer = lines.map((line, idx) => `${idx + 1}. ${line}`).join('<br>');
+
+// Show the result
 gptAnswer.innerHTML = formattedAnswer;
 
 
