@@ -1102,58 +1102,56 @@ const res = await fetch("https://api.openai.com/v1/chat/completions", {
         let answer = "";
         if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
           answer = data.choices[0].message.content.trim();
-// Clean up GPT's intro phrases
+// Step 1: Remove leading "XYZ is:" or "ABC are:"
 let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
 
-// Split smartly — by newline or sentence-ending punctuation
+// Step 2: Split into chunks using punctuation and commas
 let lines = cleanedAnswer
-  .split(/[\n\.!?]+/)  // split by newlines or sentence-ending punctuation
-  .map(line => line.trim())  // remove leading/trailing whitespace
-  .filter(line => line.length > 3 && !/^ok$/i.test(line));  // skip empty/short/“ok” lines
+  .split(/[\n\.!?\,]+/)  // now splits on commas too
+  .map(line => line.trim())
+  .filter(line => line.length > 2 && !/^ok$/i.test(line));  // filter out noise
 
-// Format into numbered list
+// Step 3: Format as numbered bullets
 let formattedAnswer = lines.map((line, idx) => `${idx + 1}. ${line}`).join('<br>');
 
-// Show the result
+// Step 4: Display nicely
 gptAnswer.innerHTML = formattedAnswer;
+
 
 
         } else if (data.error) {
           answer = "API Error: " + data.error.message;
-       // Clean up GPT's intro phrases
+     // Step 1: Remove leading "XYZ is:" or "ABC are:"
 let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
 
-// Split smartly — by newline or sentence-ending punctuation
+// Step 2: Split into chunks using punctuation and commas
 let lines = cleanedAnswer
-  .split(/[\n\.!?]+/)  // split by newlines or sentence-ending punctuation
-  .map(line => line.trim())  // remove leading/trailing whitespace
-  .filter(line => line.length > 3 && !/^ok$/i.test(line));  // skip empty/short/“ok” lines
+  .split(/[\n\.!?\,]+/)  // now splits on commas too
+  .map(line => line.trim())
+  .filter(line => line.length > 2 && !/^ok$/i.test(line));  // filter out noise
 
-// Format into numbered list
+// Step 3: Format as numbered bullets
 let formattedAnswer = lines.map((line, idx) => `${idx + 1}. ${line}`).join('<br>');
 
-// Show the result
+// Step 4: Display nicely
 gptAnswer.innerHTML = formattedAnswer;
-
-
 
         } else {
           answer = "No response from GPT.";
-  // Clean up GPT's intro phrases
+// Step 1: Remove leading "XYZ is:" or "ABC are:"
 let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
-// Split smartly — by newline or sentence-ending punctuation
-let lines = cleanedAnswer
-  .split(/[\n\.!?]+/)  // split by newlines or sentence-ending punctuation
-  .map(line => line.trim())  // remove leading/trailing whitespace
-  .filter(line => line.length > 3 && !/^ok$/i.test(line));  // skip empty/short/“ok” lines
 
-// Format into numbered list
+// Step 2: Split into chunks using punctuation and commas
+let lines = cleanedAnswer
+  .split(/[\n\.!?\,]+/)  // now splits on commas too
+  .map(line => line.trim())
+  .filter(line => line.length > 2 && !/^ok$/i.test(line));  // filter out noise
+
+// Step 3: Format as numbered bullets
 let formattedAnswer = lines.map((line, idx) => `${idx + 1}. ${line}`).join('<br>');
 
-// Show the result
+// Step 4: Display nicely
 gptAnswer.innerHTML = formattedAnswer;
-
-
 
         }
         return answer;
