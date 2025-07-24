@@ -1103,7 +1103,7 @@ const res = await fetch("https://api.openai.com/v1/chat/completions", {
         if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
           answer = data.choices[0].message.content.trim();
 // Clean up GPT's intro phrases
-let cleanedAnswer = answer.replace(/^(here (are|is)[^:]*:)/i, '').trim();
+let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
 
 // Split smartly — by newline or sentence-ending punctuation
 let lines = cleanedAnswer
@@ -1121,7 +1121,7 @@ gptAnswer.innerHTML = formattedAnswer;
         } else if (data.error) {
           answer = "API Error: " + data.error.message;
        // Clean up GPT's intro phrases
-let cleanedAnswer = answer.replace(/^(here (are|is)[^:]*:)/i, '').trim();
+let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
 
 // Split smartly — by newline or sentence-ending punctuation
 let lines = cleanedAnswer
@@ -1140,8 +1140,7 @@ gptAnswer.innerHTML = formattedAnswer;
         } else {
           answer = "No response from GPT.";
   // Clean up GPT's intro phrases
-let cleanedAnswer = answer.replace(/^(here (are|is)[^:]*:)/i, '').trim();
-
+let cleanedAnswer = answer.replace(/^.*\b(is|are):/i, '').trim();
 // Split smartly — by newline or sentence-ending punctuation
 let lines = cleanedAnswer
   .split(/[\n\.!?]+/)  // split by newlines or sentence-ending punctuation
