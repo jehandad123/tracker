@@ -1102,46 +1102,52 @@ const res = await fetch("https://api.openai.com/v1/chat/completions", {
         let answer = "";
         if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
           answer = data.choices[0].message.content.trim();
-       const lines = answer
-  .split(/(?<=[.?!])\s+|\n+/) // split by sentence ends or new lines
-  .map(line => line.replace(/^(\d+\.\s*|\-\s*|\*\s*|#\s*)/, '').trim()) // clean up any existing bullet/number
-  .filter(line => line !== '');
+   const cleanedAnswer = answer.replace(/^here (are|is)[^:]*:/i, ''); // remove "Here are your tasks:"
+const lines = cleanedAnswer
+  .split(/[\n\.!\?]+/) // split by newlines, period, exclamation or question
+  .map(line => line.trim())
+  .filter(line => line.length > 3); // ignore tiny fragments
 
-let formatted = '';
+let formattedAnswer = '';
 lines.forEach((line, index) => {
-  formatted += `${index + 1}. ${line}<br>`;
+  formattedAnswer += `${index + 1}. ${line}<br>`;
 });
 
-gptAnswer.innerHTML = formatted;
+gptAnswer.innerHTML = formattedAnswer;
+
 
         } else if (data.error) {
           answer = "API Error: " + data.error.message;
-         const lines = answer
-  .split(/(?<=[.?!])\s+|\n+/) // split by sentence ends or new lines
-  .map(line => line.replace(/^(\d+\.\s*|\-\s*|\*\s*|#\s*)/, '').trim()) // clean up any existing bullet/number
-  .filter(line => line !== '');
+       const cleanedAnswer = answer.replace(/^here (are|is)[^:]*:/i, ''); // remove "Here are your tasks:"
+const lines = cleanedAnswer
+  .split(/[\n\.!\?]+/) // split by newlines, period, exclamation or question
+  .map(line => line.trim())
+  .filter(line => line.length > 3); // ignore tiny fragments
 
-let formatted = '';
+let formattedAnswer = '';
 lines.forEach((line, index) => {
-  formatted += `${index + 1}. ${line}<br>`;
+  formattedAnswer += `${index + 1}. ${line}<br>`;
 });
 
-gptAnswer.innerHTML = formatted;
+gptAnswer.innerHTML = formattedAnswer;
+
 
 
         } else {
           answer = "No response from GPT.";
-      const lines = answer
-  .split(/(?<=[.?!])\s+|\n+/) // split by sentence ends or new lines
-  .map(line => line.replace(/^(\d+\.\s*|\-\s*|\*\s*|#\s*)/, '').trim()) // clean up any existing bullet/number
-  .filter(line => line !== '');
+     const cleanedAnswer = answer.replace(/^here (are|is)[^:]*:/i, ''); // remove "Here are your tasks:"
+const lines = cleanedAnswer
+  .split(/[\n\.!\?]+/) // split by newlines, period, exclamation or question
+  .map(line => line.trim())
+  .filter(line => line.length > 3); // ignore tiny fragments
 
-let formatted = '';
+let formattedAnswer = '';
 lines.forEach((line, index) => {
-  formatted += `${index + 1}. ${line}<br>`;
+  formattedAnswer += `${index + 1}. ${line}<br>`;
 });
 
-gptAnswer.innerHTML = formatted;
+gptAnswer.innerHTML = formattedAnswer;
+
 
 
         }
