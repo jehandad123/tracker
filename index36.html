@@ -289,12 +289,6 @@ input[type=text] {
 </head>
 <body>
   <h2 style="text-align:center; margin-top: 10px;">JD's Virtual Assistant </h2>
- <div class="category-nav">
-  <button onclick="scrollToCategory('Home')">🏠 Home</button>
-  <button onclick="scrollToCategory('Today')">📅 Today</button>
-  <button onclick="scrollToCategory('Urgent')">⚠️ Urgent</button>
-  <button onclick="scrollToCategory('Shop')">🛒 Shop</button>
-</div>
   <button id="speakBtn">🎙️ Speak</button>
   <button id="handsFreeBtn">🤖 Go Hands Free</button>
    <button id="interruptTTSBtn" style="display:none;">⏹️ Interrupt Voice</button>
@@ -302,6 +296,12 @@ input[type=text] {
   <span id="gptLoading">Thinking...</span>
 <div id="transcript" style="color: #888;">Your command will show here...</div>
 <div id="gptAnswer" style="color: #888;">Assistant's response will show here...</div>
+  <div class="category-nav">
+  <button onclick="scrollToCategory('Home')">🏠 Home</button>
+  <button onclick="scrollToCategory('Today')">📅 Today</button>
+  <button onclick="scrollToCategory('Urgent')">⚠️ Urgent</button>
+  <button onclick="scrollToCategory('Shop')">🛒 Shop</button>
+</div>
  <div class="task-input">
     <input type="text" id="manualInput" placeholder="Enter task and category at end (e.g. Buy milk Shop)" />
     <button id="addManualBtn">Add Task Manually</button>
