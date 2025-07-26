@@ -297,7 +297,6 @@ input[type=text] {
 </div>
   <button id="speakBtn">🎙️ Speak</button>
   <button id="handsFreeBtn">🤖 Go Hands Free</button>
-    <button id="stopBtn" style="display:none;">⏹️ Stop Conversation</button>
   <button id="interruptTTSBtn" style="display:none;">⏹️ Interrupt Voice</button>
   <button id="muteMicBtn" style="display:none;">🔇 Mute Mic</button>
   <span id="gptLoading">Thinking...</span>
@@ -709,7 +708,7 @@ function stopListening() {
 
   await handsFreeConversation();
 };
-
+/*
     stopBtn.onclick = () => {
       stopConversationFlag = true;
       isConversation = false;
@@ -721,7 +720,7 @@ function stopListening() {
       }
       cleanupAudio();
     };
-
+*/
     interruptTTSBtn.onclick = () => {
       window.speechSynthesis.cancel();
       ttsSpeaking = false;
