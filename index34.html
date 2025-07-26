@@ -289,7 +289,13 @@ input[type=text] {
 </head>
 <body>
   <h2 style="text-align:center; margin-top: 10px;">JD's Virtual Assistant </h2>
-   <div class="task-input">
+ <div class="category-nav">
+  <button onclick="scrollToCategory('Home')">🏠 Home</button>
+  <button onclick="scrollToCategory('Today')">📅 Today</button>
+  <button onclick="scrollToCategory('Urgent')">⚠️ Urgent</button>
+  <button onclick="scrollToCategory('Shop')">🛒 Shop</button>
+</div>
+  <div class="task-input">
     <input type="text" id="manualInput" placeholder="Enter task and category at end (e.g. Buy milk Shop)" />
     <button id="addManualBtn">Add Task Manually</button>
   </div>
@@ -313,12 +319,6 @@ input[type=text] {
   <span id="gptLoading">Thinking...</span>
   <div id="transcript"></div>
   <div id="gptAnswer"></div>
-<div class="category-nav">
-  <button onclick="scrollToCategory('Home')">🏠 Home</button>
-  <button onclick="scrollToCategory('Today')">📅 Today</button>
-  <button onclick="scrollToCategory('Urgent')">⚠️ Urgent</button>
-  <button onclick="scrollToCategory('Shop')">🛒 Shop</button>
-</div>
 
   <button id="showAllBtn" style="display:none;">Show All Tasks</button>
   <div id="categories">
