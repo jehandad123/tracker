@@ -349,6 +349,35 @@ input[type=text] {
   <!-- BEEP AUDIO ELEMENT REMOVED -->
 
   <script>
+  function scrollToCategory(id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
+</script>
+<button id="backToTop" onclick="scrollToTop()">🔝 Back to Top</button>
+  <script>
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  window.addEventListener('scroll', () => {
+    const btn = document.getElementById('backToTop');
+    btn.style.display = window.scrollY > 300 ? 'block' : 'none';
+  });
+</script>
+ <div class="api-inputs">
+    <label>
+      OpenAI API Key:
+      <input type="text" id="openaiKey" placeholder="Paste your OpenAI API Key" autocomplete="off" />
+    </label>
+    <label>
+      AssemblyAI API Key:
+      <input type="text" id="assemblyKey" placeholder="Paste your AssemblyAI API Key" autocomplete="off" />
+    </label>
+    <button id="saveKeysBtn">Save API Keys</button>
+    <span id="apiKeySaved" style="color: green; display: none;">✔️ Saved!</span>
+  </div>
+   <script>
 
 
 function correctTranscriptNames(text) {
@@ -1426,34 +1455,5 @@ function moveTaskByNumber(fromCategory, taskNumber, toCategory) {
     loadTasks();
     
   </script>
-  <script>
-  function scrollToCategory(id) {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  }
-</script>
-<button id="backToTop" onclick="scrollToTop()">🔝 Back to Top</button>
-  <script>
-  function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  window.addEventListener('scroll', () => {
-    const btn = document.getElementById('backToTop');
-    btn.style.display = window.scrollY > 300 ? 'block' : 'none';
-  });
-</script>
- <div class="api-inputs">
-    <label>
-      OpenAI API Key:
-      <input type="text" id="openaiKey" placeholder="Paste your OpenAI API Key" autocomplete="off" />
-    </label>
-    <label>
-      AssemblyAI API Key:
-      <input type="text" id="assemblyKey" placeholder="Paste your AssemblyAI API Key" autocomplete="off" />
-    </label>
-    <button id="saveKeysBtn">Save API Keys</button>
-    <span id="apiKeySaved" style="color: green; display: none;">✔️ Saved!</span>
-  </div>
 </body>
 </html>
