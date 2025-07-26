@@ -1513,7 +1513,14 @@ function moveTaskByNumber(fromCategory, taskNumber, toCategory) {
     }
 
     loadTasks();
-    
+   // to clean up the mic
+     window.addEventListener("beforeunload", () => {
+  if (recognition && typeof recognition.stop === "function") {
+    recognition.stop();
+  }
+  isRecording = false;
+  isConversation = false;
+});
   </script>
 </body>
 </html>
