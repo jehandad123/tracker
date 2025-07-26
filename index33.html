@@ -100,7 +100,19 @@
   margin-right: 10px;
   margin-top: 10px;
 }
-    
+    #backToTop {
+  position: fixed;
+  bottom: 20px;
+  left: 10px;
+  padding: 10px 14px;
+  font-size: 16px;
+  background-color: #d0d0d0;
+  border-radius: 6px;
+  cursor: pointer;
+  display: none;
+  z-index: 999;
+}
+
   </style>
 </head>
 
@@ -1430,6 +1442,17 @@ function moveTaskByNumber(fromCategory, taskNumber, toCategory) {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   }
+</script>
+<button id="backToTop" onclick="scrollToTop()">🔝 Top</button>
+  <script>
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  window.addEventListener('scroll', () => {
+    const btn = document.getElementById('backToTop');
+    btn.style.display = window.scrollY > 300 ? 'block' : 'none';
+  });
 </script>
 
 </body>
