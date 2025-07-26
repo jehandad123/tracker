@@ -713,8 +713,9 @@ function stopListening() {
     handsFreeBtn.classList.remove("recording");
     handsFreeBtn.innerText = "🤖 Go Hands-Free";
   }
+   // ✅ Add this line to reset transcript UI
+  transcriptDiv.innerText = "Your command will show here";
 }
-
 
       
   // ✅ Not recording — START hands-free conversation
