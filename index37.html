@@ -324,12 +324,12 @@ input[type=text] {
 <div id="gptAnswer" style="color: #888;">Virtual Assistant's response....</div>
   <div class="category-nav">
   <button onclick="scrollToCategory('Home')">🏠 Home</button>
-  <button onclick="scrollToCategory('Today')">📅 Today</button>
-  <button onclick="scrollToCategory('Manager')">⚠️ Manager</button>
   <button onclick="scrollToCategory('Shop')">🛒 Shop</button>
+  <button onclick="scrollToCategory('Work')">👔 Work</button>
+  <button onclick="scrollToCategory('Manager')">🛒 Manager</button>
 </div>
  <div class="task-input">
-    <input type="text" id="manualInput" placeholder="Enter task and category at end (e.g. Buy milk Shop)" />
+    <input type="text" id="manualInput" placeholder="Enter task and category at end (e.g. Buy milk Manager)" />
     <button id="addManualBtn">Add Task Manually</button>
  </div>
   <button id="showAllBtn" style="display:none;">Show All Tasks</button>
@@ -338,16 +338,16 @@ input[type=text] {
       <h3>Home</h3>
       <ul></ul>
     </div>
-    <div class="category" id="Today">
-      <h3>Today</h3>
+    <div class="category" id="Shop">
+      <h3>Shop</h3>
+      <ul></ul>
+    </div>
+    <div class="category" id="Work">
+      <h3>Work</h3>
       <ul></ul>
     </div>
     <div class="category" id="Manager">
       <h3>Manager</h3>
-      <ul></ul>
-    </div>
-    <div class="category" id="Shop">
-      <h3>Shop</h3>
       <ul></ul>
     </div>
   </div>
@@ -475,7 +475,7 @@ const REQUIRED_ACTIVE_FRAMES = 5; // ✅ How many frames need to be "loud" to tr
     const importTasksBtn = document.getElementById("importTasksBtn");
     const backupArea = document.getElementById("backupArea");
 
-    const categories = ["Home", "Today", "Manager", "Shop"];
+    const categories = ["Home", "Shop", "Work", "Manager"];
 
     // ==== TTS Unlock Logic ====
     let ttsUnlocked = false;
@@ -615,7 +615,7 @@ loadTasks();
       if (!normalizedCategory) {
         playBeep();
         speakTextWithWebSpeech("Sorry, can you repeat please?");
-        transcriptDiv.textContent += "\n⚠️ GPT could not determine a valid category. Please say Home, Today, Manager, or Shop.";
+        transcriptDiv.textContent += "\n⚠️ GPT could not determine a valid category. Please say Home, Shop, Work, or Manager.";
         return;
       }
       let cleanedTask = extractTaskText(taskDesc, normalizedCategory);
@@ -819,7 +819,7 @@ if (userInput && userInput.trim().length > 0) {
         let handled = false;
         try {
           const lower = toParse.trim().toLowerCase();
-  // Voice command: "delete task 3 in Shop", "delete task 2 from Home", or "delete task 1 Shop"
+  // Voice command: "delete task 3 in Manager", "delete task 2 from Home", or "delete task 1 Manager"
   const deleteMatch = toParse.match(/(?:delete|remove)\s+task\s+(\d+)(?:\s+(?:in|from)\s+|\s+)([\w\s]+)/i);
   if (deleteMatch) {
     const number = parseInt(deleteMatch[1]);
@@ -831,7 +831,7 @@ if (userInput && userInput.trim().length > 0) {
     console.log("[VoiceDelete] Extracted number:", number, "Category:", category);
 
     if (!category) {
-      await speakTextWithWebSpeech("Sorry, I couldn't identify the category. Try, for example, 'delete task 2 in Shop'.");
+      await speakTextWithWebSpeech("Sorry, I couldn't identify the category. Try, for example, 'delete task 2 in Manager'.");
     } else {
       const success = deleteTaskByNumber(category, number);
       if (success) {
@@ -842,8 +842,8 @@ if (userInput && userInput.trim().length > 0) {
     }
     handled = true;
   }
-// Voice command: move task 2 from home to shop
-// Also supports: move task 2 from home category to shop category, etc.
+// Voice command: move task 2 from home to Manager
+// Also supports: move task 2 from home category to Manager category, etc.
 const moveMatch = toParse.match(
   /move\s+task\s+(\d+)\s+from\s+([a-z\s]+?)(?:\s+category)?\s+to\s+([a-z\s]+?)(?:\s+category)?\b/i
 );
@@ -855,7 +855,7 @@ if (moveMatch) {
   const toCategory = extractValidCategory(toCategoryRaw);
 
   if (!fromCategory || !toCategory) {
-    await speakTextWithWebSpeech("Sorry, I couldn't identify one of the categories. Try something like 'move task 2 from Home to Shop category.'");
+    await speakTextWithWebSpeech("Sorry, I couldn't identify one of the categories. Try something like 'move task 2 from Home to Manager category.'");
   } else {
     const success = moveTaskByNumber(fromCategory, number, toCategory);
     if (success) {
