@@ -313,7 +313,7 @@ input[type=text] {
 <body>
   <h2 style="text-align:center; margin-top: 10px;">JD's Virtual Assistant </h2>
   <button id="speakBtn">🎙️ Speak</button>
-  <button id="handsFreeBtn">🤖 Go Hands Free</button>
+  <button id="handsFreeBtn">🤖 Conversation Mode</button>
  <div class="control-buttons">
   <button id="stopBtn">🛑 Stop</button>
   <button id="interruptTTSBtn">🔇 Interrupt</button>
@@ -758,7 +758,7 @@ function stopListening() {
     muteMicBtn.onclick = () => {
       micMuted = !micMuted;
       muteMicBtn.classList.toggle("muted", micMuted);
-      muteMicBtn.textContent = micMuted ? "🔈 Unmute Mic" : "🔇 Mute Mic";
+      muteMicBtn.textContent = micMuted ? "🎤 Unmute Mic" : "🎤 Mute Mic";
     };
 
     async function handsFreeConversation() {
