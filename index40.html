@@ -1181,11 +1181,11 @@ if (fullListMatch && fullListMatch[4]) {
   let matched = fullListMatch[4].trim().toLowerCase();
   let requestedCategory = matched.charAt(0).toUpperCase() + matched.slice(1);
   if (categories.includes(requestedCategory)) {
-    maxTokens = 100000;
+    maxTokens = 25000;
     prompt += `\nUser asked for all tasks in '${requestedCategory}'. List every task from that category only. Do not summarize. Number each item clearly.`;
   }
 } else if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(userQuestion)) {
-  maxTokens = 100000;
+  maxTokens = 25000;
   prompt += `\nUser asked for all tasks in all categories. Return a complete list, grouped and numbered. No summary.`;
 }
 
