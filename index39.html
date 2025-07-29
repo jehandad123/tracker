@@ -1330,6 +1330,7 @@ function speakTextWithWebSpeech(text) {
       synth.speak(utter);
     };
 
+    // ✅ Voice loading logic should be INSIDE the function like this
     if (synth.getVoices().length === 0) {
       speechSynthesis.onvoiceschanged = () => speak();
     } else {
@@ -1338,6 +1339,7 @@ function speakTextWithWebSpeech(text) {
   });
 }
 
+// 🎯 The rest of your utility functions — also clean and working:
 function getAllTasks() {
   const allTasks = [];
   categories.forEach(cat => {
@@ -1370,9 +1372,8 @@ function createTaskRow(category, taskObj, idx, total) {
 
   const taskText = document.createElement("span");
   taskText.className = "task-text";
-  // (you can continue from here as-is...)
+  // (Continue your row building logic here...)
 }
-
 
 // 👇 Add task number (#1, #2, etc. per category)
 const taskNumber = idx + 1;
