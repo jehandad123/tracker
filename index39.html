@@ -1319,62 +1319,60 @@ function speakTextWithWebSpeech(text) {
 
     synth.cancel(); // 🔥 Kill any previous queued speech
 
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.pitch = 1;
-    utter.rate = 0.97;
+    const speak = () => {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.pitch = 1;
+      utter.rate = 0.97;
 
-    utter.onend = () => resolve();
-    utter.onerror = () => resolve();
+      utter.onend = () => resolve();
+      utter.onerror = () => resolve();
 
-    synth.speak(utter);
-  });
-}
+      synth.speak(utter);
+    };
 
-    if (speechSynthesis.getVoices().length === 0) {
-      // Voices not loaded yet
-      speechSynthesis.onvoiceschanged = () => {
-        speak();
-      };
+    if (synth.getVoices().length === 0) {
+      speechSynthesis.onvoiceschanged = () => speak();
     } else {
-      // Voices already loaded
       speak();
     }
   });
 }
 
+function getAllTasks() {
+  const allTasks = [];
+  categories.forEach(cat => {
+    const catTasks = JSON.parse(localStorage.getItem(cat)) || [];
+    catTasks.forEach(taskObj => {
+      allTasks.push({ ...taskObj, category: cat });
+    });
+  });
+  return allTasks;
+}
 
-    function getAllTasks() {
-      const allTasks = [];
-      categories.forEach(cat => {
-        const catTasks = JSON.parse(localStorage.getItem(cat)) || [];
-        catTasks.forEach(taskObj => {
-          allTasks.push({ ...taskObj, category: cat });
-        });
-      });
-      return allTasks;
-    }
+function showOnlyCategory(cat) {
+  categories.forEach(category => {
+    document.getElementById(category).classList.toggle('hidden', category !== cat);
+  });
+  showAllBtn.style.display = "inline-block";
+}
 
-    function showOnlyCategory(cat) {
-      categories.forEach(category => {
-        document.getElementById(category).classList.toggle('hidden', category !== cat);
-      });
-      showAllBtn.style.display = "inline-block";
-    }
+function showAllCategories() {
+  categories.forEach(category => {
+    document.getElementById(category).classList.remove('hidden');
+  });
+  showAllBtn.style.display = "none";
+  loadTasks();
+}
 
-    function showAllCategories() {
-      categories.forEach(category => {
-        document.getElementById(category).classList.remove('hidden');
-      });
-      showAllBtn.style.display = "none";
-      loadTasks();
-    }
+function createTaskRow(category, taskObj, idx, total) {
+  const row = document.createElement("div");
+  row.className = "task-row";
 
-    function createTaskRow(category, taskObj, idx, total) {
-      const row = document.createElement("div");
-      row.className = "task-row";
+  const taskText = document.createElement("span");
+  taskText.className = "task-text";
+  // (you can continue from here as-is...)
+}
 
-const taskText = document.createElement("span");
-taskText.className = "task-text";
 
 // 👇 Add task number (#1, #2, etc. per category)
 const taskNumber = idx + 1;
