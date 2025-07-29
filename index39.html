@@ -1155,7 +1155,7 @@ silenceTimeout = setTimeout(() => {
     alert("Please enter and save your OpenAI API key.");
     return "";
   }
-
+  let ttsHandled = false; // 👈🏽 this is the fix
   gptAnswer.textContent = "";
   const tasks = getAllTasks();
 
