@@ -1101,7 +1101,7 @@ silenceTimeout = setTimeout(() => {
             "Authorization": "Bearer " + OPENAI_API_KEY
           },
           body: JSON.stringify({
-            model: "GPT‑4o mini",
+            model: "gpt‑4.1-mini",
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userInput }
@@ -1198,7 +1198,7 @@ const res = await fetch("https://api.openai.com/v1/chat/completions", {
     "Authorization": "Bearer " + OPENAI_API_KEY
   },
   body: JSON.stringify({
-    model: "GPT‑4o mini",
+    model: "gpt‑4.1-mini",
     messages: [
       {role: "system", content: "You are a helpful personal task assistant."},
       {role: "user", content: prompt}
