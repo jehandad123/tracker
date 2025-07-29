@@ -1149,7 +1149,8 @@ silenceTimeout = setTimeout(() => {
       }
     }
 // New full list logic
- async function askGpt(userQuestion) {
+
+async function askGpt(userQuestion) {
   const OPENAI_API_KEY = getOpenAIKey();
   if (!OPENAI_API_KEY) {
     alert("Please enter and save your OpenAI API key.");
@@ -1160,7 +1161,7 @@ silenceTimeout = setTimeout(() => {
   gptAnswer.textContent = "";
   const tasks = getAllTasks();
 
-  // 🔹 Handle "show all tasks" via JS
+  // 🔹 Local: Show all tasks
   if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(userQuestion)) {
     const grouped = {};
     tasks.forEach(t => {
@@ -1172,17 +1173,19 @@ silenceTimeout = setTimeout(() => {
     for (const [cat, taskList] of Object.entries(grouped)) {
       html += `<strong>${cat}:</strong><ul>` + taskList.map(t => `<li>${t}</li>`).join('') + "</ul>";
     }
+
     gptAnswer.innerHTML = html;
 
     const summary = Object.entries(grouped)
       .map(([cat, tasks]) => `${cat}: ${tasks.length} tasks`)
       .join(". ");
+
     await speakTextWithWebSpeech("Here is the summary. " + summary);
     ttsHandled = true;
     return;
   }
 
-  // 🔹 Handle "all tasks in [category]" via JS
+  // 🔹 Local: Show all tasks from one category
   const categoryList = categories.map(cat => cat.toLowerCase()).join('|');
   const fullListRegex = new RegExp(`\\b(list|show)\\s+(all\\s+)?tasks?\\s*(in|from)?\\s*(${categoryList})(\\s*category)?\\b`, 'i');
   const fullListMatch = userQuestion.match(fullListRegex);
@@ -1197,6 +1200,7 @@ silenceTimeout = setTimeout(() => {
           `<li>${i + 1}. ${t.text}${t.date ? ` (${t.date.slice(0, 10)})` : ""}</li>`
         ).join('') + "</ul>";
       gptAnswer.innerHTML = html;
+
       await speakTextWithWebSpeech(`You have ${catTasks.length} tasks in the ${requestedCategory} category.`);
       ttsHandled = true;
       return;
@@ -1243,7 +1247,7 @@ silenceTimeout = setTimeout(() => {
       answer = data.error ? "API Error: " + data.error.message : "No response from GPT.";
     }
 
-    // Format into bullet list
+    // Clean and format response
     let cleanedAnswer = answer.replace(/^.*?\b(is|are):/i, '').trim();
     let lines = cleanedAnswer
       .split(/(?:\r?\n|(?:^|[^\d])[\*\-\•]\s+|\d+\.\s+)+/)
@@ -1256,7 +1260,6 @@ silenceTimeout = setTimeout(() => {
 
     gptAnswer.innerHTML = formattedAnswer;
 
-    // 🔇 Avoid double speech
     if (!ttsHandled && lines.length > 0) {
       const shortSpeech = lines.slice(0, 5).join(". ") + ".";
       if (shortSpeech.length < 500) {
@@ -1272,7 +1275,7 @@ silenceTimeout = setTimeout(() => {
   }
 }
 
-    
+     
     // Platform-specific voice selection
 // Restore silence control settings from localStorage
 window.addEventListener("load", () => {
