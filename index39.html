@@ -1148,8 +1148,9 @@ silenceTimeout = setTimeout(() => {
         silenceTimeout = null;
       }
     }
-// New full list logic
 
+    let ttsSpokenForCurrentRequest = false; // global or module-level flag
+// New full list function
 async function askGpt(userQuestion) {
   const OPENAI_API_KEY = getOpenAIKey();
   if (!OPENAI_API_KEY) {
@@ -1157,12 +1158,23 @@ async function askGpt(userQuestion) {
     return "";
   }
 
-  let ttsHandled = false;
+  ttsSpokenForCurrentRequest = false;   // Reset flag at start
   gptAnswer.textContent = "";
   const tasks = getAllTasks();
 
-  // 🔹 Local: Show all tasks
-  if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(userQuestion)) {
+  // Normalize user question for matching
+  const normalizedQ = userQuestion.toLowerCase();
+
+  // Helper function to invoke TTS once
+  async function safeSpeak(text) {
+    if (!ttsSpokenForCurrentRequest) {
+      ttsSpokenForCurrentRequest = true;
+      await speakTextWithWebSpeech(text);
+    }
+  }
+
+  // Check if user asked for "all tasks" globally
+  if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(normalizedQ)) {
     const grouped = {};
     tasks.forEach(t => {
       if (!grouped[t.category]) grouped[t.category] = [];
@@ -1173,22 +1185,19 @@ async function askGpt(userQuestion) {
     for (const [cat, taskList] of Object.entries(grouped)) {
       html += `<strong>${cat}:</strong><ul>` + taskList.map(t => `<li>${t}</li>`).join('') + "</ul>";
     }
-
     gptAnswer.innerHTML = html;
 
     const summary = Object.entries(grouped)
       .map(([cat, tasks]) => `${cat}: ${tasks.length} tasks`)
       .join(". ");
-
-    await speakTextWithWebSpeech("Here is the summary. " + summary);
-    ttsHandled = true;
-    return;
+    await safeSpeak("Here is the summary. " + summary);
+    return;  // Return early to avoid any GPT call or double TTS
   }
 
-  // 🔹 Local: Show all tasks from one category
+  // Check if user asked for all tasks in a specific category
   const categoryList = categories.map(cat => cat.toLowerCase()).join('|');
   const fullListRegex = new RegExp(`\\b(list|show)\\s+(all\\s+)?tasks?\\s*(in|from)?\\s*(${categoryList})(\\s*category)?\\b`, 'i');
-  const fullListMatch = userQuestion.match(fullListRegex);
+  const fullListMatch = normalizedQ.match(fullListRegex);
 
   if (fullListMatch && fullListMatch[4]) {
     let matched = fullListMatch[4].trim().toLowerCase();
@@ -1201,14 +1210,12 @@ async function askGpt(userQuestion) {
         ).join('') + "</ul>";
       gptAnswer.innerHTML = html;
 
-      await speakTextWithWebSpeech(`You have ${catTasks.length} tasks in the ${requestedCategory} category.`);
-      ttsHandled = true;
-      return;
+      await safeSpeak(`You have ${catTasks.length} tasks in the ${requestedCategory} category.`);
+      return; // Return early to avoid GPT call / double TTS
     }
   }
 
-  // 🧠 GPT Prompt Logic
-  let maxTokens = 1200;
+  // Otherwise, build the prompt for GPT with short answers by default
   let prompt = `Here are my tasks, grouped and numbered per category:\n`;
   categories.forEach((cat) => {
     const catTasks = tasks.filter(t => t.category === cat);
@@ -1234,39 +1241,39 @@ async function askGpt(userQuestion) {
           { role: "system", content: "You are a helpful personal task assistant." },
           { role: "user", content: prompt }
         ],
-        max_tokens: maxTokens
+        max_tokens: 1500
       })
     });
 
     const data = await res.json();
     let answer = "";
 
-    if (data.choices && data.choices[0]?.message?.content) {
+    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
       answer = data.choices[0].message.content.trim();
     } else {
       answer = data.error ? "API Error: " + data.error.message : "No response from GPT.";
     }
 
-    // Clean and format response
-    let cleanedAnswer = answer.replace(/^.*?\b(is|are):/i, '').trim();
+    // Format GPT answer into clean HTML list
+    let cleanedAnswer = answer.replace(/^.*?\b(is|are|the following|tasks?):/i, '').trim();
+
     let lines = cleanedAnswer
       .split(/(?:\r?\n|(?:^|[^\d])[\*\-\•]\s+|\d+\.\s+)+/)
       .map(line => line.trim())
       .filter(line => line.length > 2 && !/^ok$/i.test(line));
 
-    let formattedAnswer = '<ul>' + lines.map(
-      line => `<li>${line}</li>`
-    ).join('') + '</ul>';
-
-    gptAnswer.innerHTML = formattedAnswer;
-
-    if (!ttsHandled && lines.length > 0) {
-      const shortSpeech = lines.slice(0, 5).join(". ") + ".";
-      if (shortSpeech.length < 500) {
-        await speakTextWithWebSpeech(shortSpeech);
-      }
+    if (lines.length === 0) {
+      // fallback if splitting failed, display full answer
+      gptAnswer.textContent = answer;
+    } else {
+      let formattedAnswer = '<ul>' + lines.map(
+        line => `<li>${line}</li>`
+      ).join('') + '</ul>';
+      gptAnswer.innerHTML = formattedAnswer;
     }
 
+    // Speak only first 5 items or summary
+    await safeSpeak(lines.slice(0, 5).join(". ") + ".");
     return answer;
 
   } catch (err) {
@@ -1275,7 +1282,6 @@ async function askGpt(userQuestion) {
   }
 }
 
-     
     // Platform-specific voice selection
 // Restore silence control settings from localStorage
 window.addEventListener("load", () => {
@@ -1308,72 +1314,71 @@ function getBestVoice() {
   //JD end
 
     // Interruptible TTS
-function speakTextWithWebSpeech(text) {
+   function speakTextWithWebSpeech(text) {
   return new Promise((resolve) => {
     const synth = window.speechSynthesis;
     if (!synth) {
-      console.warn("Speech Synthesis not supported.");
+      alert("Speech Synthesis not supported in this browser.");
       resolve();
       return;
     }
 
-    synth.cancel(); // 🔥 Kill any previous queued speech
-
+    // Wait for voices to load if needed
     const speak = () => {
       const utter = new SpeechSynthesisUtterance(text);
+// Use default system voice (browser determines best)
       utter.pitch = 1;
       utter.rate = 0.97;
-
       utter.onend = () => resolve();
       utter.onerror = () => resolve();
-
       synth.speak(utter);
     };
 
-    // ✅ Voice loading logic should be INSIDE the function like this
-    if (synth.getVoices().length === 0) {
-      speechSynthesis.onvoiceschanged = () => speak();
+    if (speechSynthesis.getVoices().length === 0) {
+      // Voices not loaded yet
+      speechSynthesis.onvoiceschanged = () => {
+        speak();
+      };
     } else {
+      // Voices already loaded
       speak();
     }
   });
 }
 
-// 🎯 The rest of your utility functions — also clean and working:
-function getAllTasks() {
-  const allTasks = [];
-  categories.forEach(cat => {
-    const catTasks = JSON.parse(localStorage.getItem(cat)) || [];
-    catTasks.forEach(taskObj => {
-      allTasks.push({ ...taskObj, category: cat });
-    });
-  });
-  return allTasks;
-}
 
-function showOnlyCategory(cat) {
-  categories.forEach(category => {
-    document.getElementById(category).classList.toggle('hidden', category !== cat);
-  });
-  showAllBtn.style.display = "inline-block";
-}
+    function getAllTasks() {
+      const allTasks = [];
+      categories.forEach(cat => {
+        const catTasks = JSON.parse(localStorage.getItem(cat)) || [];
+        catTasks.forEach(taskObj => {
+          allTasks.push({ ...taskObj, category: cat });
+        });
+      });
+      return allTasks;
+    }
 
-function showAllCategories() {
-  categories.forEach(category => {
-    document.getElementById(category).classList.remove('hidden');
-  });
-  showAllBtn.style.display = "none";
-  loadTasks();
-}
+    function showOnlyCategory(cat) {
+      categories.forEach(category => {
+        document.getElementById(category).classList.toggle('hidden', category !== cat);
+      });
+      showAllBtn.style.display = "inline-block";
+    }
 
-function createTaskRow(category, taskObj, idx, total) {
-  const row = document.createElement("div");
-  row.className = "task-row";
+    function showAllCategories() {
+      categories.forEach(category => {
+        document.getElementById(category).classList.remove('hidden');
+      });
+      showAllBtn.style.display = "none";
+      loadTasks();
+    }
 
-  const taskText = document.createElement("span");
-  taskText.className = "task-text";
-  // (Continue your row building logic here...)
-}
+    function createTaskRow(category, taskObj, idx, total) {
+      const row = document.createElement("div");
+      row.className = "task-row";
+
+const taskText = document.createElement("span");
+taskText.className = "task-text";
 
 // 👇 Add task number (#1, #2, etc. per category)
 const taskNumber = idx + 1;
