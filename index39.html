@@ -1151,7 +1151,7 @@ silenceTimeout = setTimeout(() => {
 
     let ttsSpokenForCurrentRequest = false; // global or module-level flag
 // New full list function
-let ttsSpokenForCurrentRequest = false; // global or module-level flag to prevent duplicated TTS
+let ttsSpokenForCurrentRequest = false; // Declare once globally or at module level
 
 async function askGpt(userQuestion) {
   const OPENAI_API_KEY = getOpenAIKey();
@@ -1160,14 +1160,14 @@ async function askGpt(userQuestion) {
     return "";
   }
 
-  ttsSpokenForCurrentRequest = false;   // Reset flag at start of each call
+  ttsSpokenForCurrentRequest = false;   // Reset flag on every new call
   gptAnswer.textContent = "";
   const tasks = getAllTasks();
 
-  // Normalize user question for matching ease
+  // Normalize user question for consistent matching
   const normalizedQ = userQuestion.toLowerCase();
 
-  // Helper to safely speak only once per request
+  // Helper to call TTS only once
   async function safeSpeak(text) {
     if (!ttsSpokenForCurrentRequest) {
       ttsSpokenForCurrentRequest = true;
@@ -1175,7 +1175,7 @@ async function askGpt(userQuestion) {
     }
   }
 
-  // Handle: user asked for "all tasks" globally — bypass GPT
+  // Full list requested globally? Show locally.
   if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(normalizedQ)) {
     const grouped = {};
     tasks.forEach(t => {
@@ -1193,10 +1193,10 @@ async function askGpt(userQuestion) {
       .map(([cat, tasks]) => `${cat}: ${tasks.length} tasks`)
       .join(". ");
     await safeSpeak("Here is the summary. " + summary);
-    return;  // Stop here — no GPT call or double TTS
+    return;  // Return early: no GPT call or double TTS
   }
 
-  // Handle: user asked for all tasks in a specific category — bypass GPT
+  // Full list requested in a specific category? Show locally.
   const categoryList = categories.map(cat => cat.toLowerCase()).join('|');
   const fullListRegex = new RegExp(`\\b(list|show)\\s+(all\\s+)?tasks?\\s*(in|from)?\\s*(${categoryList})(\\s*category)?\\b`, 'i');
   const fullListMatch = normalizedQ.match(fullListRegex);
@@ -1213,11 +1213,11 @@ async function askGpt(userQuestion) {
       gptAnswer.innerHTML = html;
 
       await safeSpeak(`You have ${catTasks.length} tasks in the ${requestedCategory} category.`);
-      return; // Stop here — no GPT call or double TTS
+      return;  // Return early: no GPT call or double TTS
     }
   }
 
-  // Otherwise, build and send prompt to GPT for short answer
+  // Otherwise, build GPT prompt for a short answer by default
   let prompt = `Here are my tasks, grouped and numbered per category:\n`;
   categories.forEach((cat) => {
     const catTasks = tasks.filter(t => t.category === cat);
@@ -1256,7 +1256,7 @@ async function askGpt(userQuestion) {
       answer = data.error ? "API Error: " + data.error.message : "No response from GPT.";
     }
 
-    // Clean GPT answer for list formatting
+    // Clean and split GPT's response into list items if possible
     let cleanedAnswer = answer.replace(/^.*?\b(is|are|the following|tasks?):/i, '').trim();
 
     let lines = cleanedAnswer
@@ -1265,7 +1265,7 @@ async function askGpt(userQuestion) {
       .filter(line => line.length > 2 && !/^ok$/i.test(line));
 
     if (lines.length === 0) {
-      // If splitting failed, just display full raw answer
+      // Fallback to output raw GPT text if splitting fails
       gptAnswer.textContent = answer;
     } else {
       let formattedAnswer = '<ul>' + lines.map(
@@ -1274,7 +1274,7 @@ async function askGpt(userQuestion) {
       gptAnswer.innerHTML = formattedAnswer;
     }
 
-    // Speak first 5 lines or summary
+    // Speak first 5 lines or summary only once
     await safeSpeak(lines.slice(0, 5).join(". ") + ".");
     return answer;
 
@@ -1283,7 +1283,6 @@ async function askGpt(userQuestion) {
     return "Request failed: " + err.message;
   }
 }
-
 
     // Platform-specific voice selection
 // Restore silence control settings from localStorage
