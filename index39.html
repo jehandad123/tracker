@@ -1149,19 +1149,18 @@ silenceTimeout = setTimeout(() => {
       }
     }
 // New full list logic
-  async function askGpt(userQuestion) {
+ async function askGpt(userQuestion) {
   const OPENAI_API_KEY = getOpenAIKey();
   if (!OPENAI_API_KEY) {
     alert("Please enter and save your OpenAI API key.");
     return "";
   }
-  let ttsHandled = false; // 👈🏽 this is the fix
+
+  let ttsHandled = false;
   gptAnswer.textContent = "";
   const tasks = getAllTasks();
 
-  let maxTokens = 200; // Default token limit for short replies
-
-  // 🧠 Handle "show all tasks" locally
+  // 🔹 Handle "show all tasks" via JS
   if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(userQuestion)) {
     const grouped = {};
     tasks.forEach(t => {
@@ -1169,22 +1168,21 @@ silenceTimeout = setTimeout(() => {
       grouped[t.category].push(t.text + (t.date ? ` (${t.date.slice(0, 10)})` : ""));
     });
 
-    // HTML output
     let html = "";
     for (const [cat, taskList] of Object.entries(grouped)) {
       html += `<strong>${cat}:</strong><ul>` + taskList.map(t => `<li>${t}</li>`).join('') + "</ul>";
     }
     gptAnswer.innerHTML = html;
 
-    // TTS summary
     const summary = Object.entries(grouped)
       .map(([cat, tasks]) => `${cat}: ${tasks.length} tasks`)
       .join(". ");
     await speakTextWithWebSpeech("Here is the summary. " + summary);
+    ttsHandled = true;
     return;
   }
 
-  // 🧠 Handle "all tasks in [category]" locally
+  // 🔹 Handle "all tasks in [category]" via JS
   const categoryList = categories.map(cat => cat.toLowerCase()).join('|');
   const fullListRegex = new RegExp(`\\b(list|show)\\s+(all\\s+)?tasks?\\s*(in|from)?\\s*(${categoryList})(\\s*category)?\\b`, 'i');
   const fullListMatch = userQuestion.match(fullListRegex);
@@ -1200,11 +1198,13 @@ silenceTimeout = setTimeout(() => {
         ).join('') + "</ul>";
       gptAnswer.innerHTML = html;
       await speakTextWithWebSpeech(`You have ${catTasks.length} tasks in the ${requestedCategory} category.`);
+      ttsHandled = true;
       return;
     }
   }
 
-  // ✉️ Otherwise, build a normal GPT prompt
+  // 🧠 GPT Prompt Logic
+  let maxTokens = 1200;
   let prompt = `Here are my tasks, grouped and numbered per category:\n`;
   categories.forEach((cat) => {
     const catTasks = tasks.filter(t => t.category === cat);
@@ -1230,19 +1230,20 @@ silenceTimeout = setTimeout(() => {
           { role: "system", content: "You are a helpful personal task assistant." },
           { role: "user", content: prompt }
         ],
-        max_tokens: 1500 // safe upper limit
+        max_tokens: maxTokens
       })
     });
+
     const data = await res.json();
     let answer = "";
 
-    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+    if (data.choices && data.choices[0]?.message?.content) {
       answer = data.choices[0].message.content.trim();
     } else {
       answer = data.error ? "API Error: " + data.error.message : "No response from GPT.";
     }
 
-    // Clean and format response
+    // Format into bullet list
     let cleanedAnswer = answer.replace(/^.*?\b(is|are):/i, '').trim();
     let lines = cleanedAnswer
       .split(/(?:\r?\n|(?:^|[^\d])[\*\-\•]\s+|\d+\.\s+)+/)
@@ -1255,17 +1256,16 @@ silenceTimeout = setTimeout(() => {
 
     gptAnswer.innerHTML = formattedAnswer;
 
-    // ✅ Prevent double speaking
+    // 🔇 Avoid double speech
     if (!ttsHandled && lines.length > 0) {
       const shortSpeech = lines.slice(0, 5).join(". ") + ".";
-      if (shortSpeech.length < 500) { // safety in case it's way too long
+      if (shortSpeech.length < 500) {
         await speakTextWithWebSpeech(shortSpeech);
       }
     }
 
     return answer;
 
-   
   } catch (err) {
     gptAnswer.textContent = "Request failed: " + err.message;
     return "Request failed: " + err.message;
@@ -1305,25 +1305,27 @@ function getBestVoice() {
   //JD end
 
     // Interruptible TTS
-   function speakTextWithWebSpeech(text) {
+function speakTextWithWebSpeech(text) {
   return new Promise((resolve) => {
     const synth = window.speechSynthesis;
     if (!synth) {
-      alert("Speech Synthesis not supported in this browser.");
+      console.warn("Speech Synthesis not supported.");
       resolve();
       return;
     }
 
-    // Wait for voices to load if needed
-    const speak = () => {
-      const utter = new SpeechSynthesisUtterance(text);
-// Use default system voice (browser determines best)
-      utter.pitch = 1;
-      utter.rate = 0.97;
-      utter.onend = () => resolve();
-      utter.onerror = () => resolve();
-      synth.speak(utter);
-    };
+    synth.cancel(); // 🔥 Kill any previous queued speech
+
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.pitch = 1;
+    utter.rate = 0.97;
+
+    utter.onend = () => resolve();
+    utter.onerror = () => resolve();
+
+    synth.speak(utter);
+  });
+}
 
     if (speechSynthesis.getVoices().length === 0) {
       // Voices not loaded yet
