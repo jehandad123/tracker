@@ -1151,6 +1151,8 @@ silenceTimeout = setTimeout(() => {
 
     let ttsSpokenForCurrentRequest = false; // global or module-level flag
 // New full list function
+let ttsSpokenForCurrentRequest = false; // global or module-level flag to prevent duplicated TTS
+
 async function askGpt(userQuestion) {
   const OPENAI_API_KEY = getOpenAIKey();
   if (!OPENAI_API_KEY) {
@@ -1158,14 +1160,14 @@ async function askGpt(userQuestion) {
     return "";
   }
 
-  ttsSpokenForCurrentRequest = false;   // Reset flag at start
+  ttsSpokenForCurrentRequest = false;   // Reset flag at start of each call
   gptAnswer.textContent = "";
   const tasks = getAllTasks();
 
-  // Normalize user question for matching
+  // Normalize user question for matching ease
   const normalizedQ = userQuestion.toLowerCase();
 
-  // Helper function to invoke TTS once
+  // Helper to safely speak only once per request
   async function safeSpeak(text) {
     if (!ttsSpokenForCurrentRequest) {
       ttsSpokenForCurrentRequest = true;
@@ -1173,7 +1175,7 @@ async function askGpt(userQuestion) {
     }
   }
 
-  // Check if user asked for "all tasks" globally
+  // Handle: user asked for "all tasks" globally — bypass GPT
   if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(normalizedQ)) {
     const grouped = {};
     tasks.forEach(t => {
@@ -1191,10 +1193,10 @@ async function askGpt(userQuestion) {
       .map(([cat, tasks]) => `${cat}: ${tasks.length} tasks`)
       .join(". ");
     await safeSpeak("Here is the summary. " + summary);
-    return;  // Return early to avoid any GPT call or double TTS
+    return;  // Stop here — no GPT call or double TTS
   }
 
-  // Check if user asked for all tasks in a specific category
+  // Handle: user asked for all tasks in a specific category — bypass GPT
   const categoryList = categories.map(cat => cat.toLowerCase()).join('|');
   const fullListRegex = new RegExp(`\\b(list|show)\\s+(all\\s+)?tasks?\\s*(in|from)?\\s*(${categoryList})(\\s*category)?\\b`, 'i');
   const fullListMatch = normalizedQ.match(fullListRegex);
@@ -1211,11 +1213,11 @@ async function askGpt(userQuestion) {
       gptAnswer.innerHTML = html;
 
       await safeSpeak(`You have ${catTasks.length} tasks in the ${requestedCategory} category.`);
-      return; // Return early to avoid GPT call / double TTS
+      return; // Stop here — no GPT call or double TTS
     }
   }
 
-  // Otherwise, build the prompt for GPT with short answers by default
+  // Otherwise, build and send prompt to GPT for short answer
   let prompt = `Here are my tasks, grouped and numbered per category:\n`;
   categories.forEach((cat) => {
     const catTasks = tasks.filter(t => t.category === cat);
@@ -1254,7 +1256,7 @@ async function askGpt(userQuestion) {
       answer = data.error ? "API Error: " + data.error.message : "No response from GPT.";
     }
 
-    // Format GPT answer into clean HTML list
+    // Clean GPT answer for list formatting
     let cleanedAnswer = answer.replace(/^.*?\b(is|are|the following|tasks?):/i, '').trim();
 
     let lines = cleanedAnswer
@@ -1263,7 +1265,7 @@ async function askGpt(userQuestion) {
       .filter(line => line.length > 2 && !/^ok$/i.test(line));
 
     if (lines.length === 0) {
-      // fallback if splitting failed, display full answer
+      // If splitting failed, just display full raw answer
       gptAnswer.textContent = answer;
     } else {
       let formattedAnswer = '<ul>' + lines.map(
@@ -1272,7 +1274,7 @@ async function askGpt(userQuestion) {
       gptAnswer.innerHTML = formattedAnswer;
     }
 
-    // Speak only first 5 items or summary
+    // Speak first 5 lines or summary
     await safeSpeak(lines.slice(0, 5).join(". ") + ".");
     return answer;
 
@@ -1281,6 +1283,7 @@ async function askGpt(userQuestion) {
     return "Request failed: " + err.message;
   }
 }
+
 
     // Platform-specific voice selection
 // Restore silence control settings from localStorage
@@ -1314,7 +1317,7 @@ function getBestVoice() {
   //JD end
 
     // Interruptible TTS
-   function speakTextWithWebSpeech(text) {
+  function speakTextWithWebSpeech(text) {
   return new Promise((resolve) => {
     const synth = window.speechSynthesis;
     if (!synth) {
@@ -1323,10 +1326,14 @@ function getBestVoice() {
       return;
     }
 
-    // Wait for voices to load if needed
+    // Cancel any ongoing or queued speech to prevent stacking voices
+    if (synth.speaking || synth.pending) {
+      synth.cancel();
+    }
+
     const speak = () => {
       const utter = new SpeechSynthesisUtterance(text);
-// Use default system voice (browser determines best)
+      // Use default system voice (browser determines best)
       utter.pitch = 1;
       utter.rate = 0.97;
       utter.onend = () => resolve();
@@ -1335,50 +1342,14 @@ function getBestVoice() {
     };
 
     if (speechSynthesis.getVoices().length === 0) {
-      // Voices not loaded yet
       speechSynthesis.onvoiceschanged = () => {
         speak();
       };
     } else {
-      // Voices already loaded
       speak();
     }
   });
 }
-
-
-    function getAllTasks() {
-      const allTasks = [];
-      categories.forEach(cat => {
-        const catTasks = JSON.parse(localStorage.getItem(cat)) || [];
-        catTasks.forEach(taskObj => {
-          allTasks.push({ ...taskObj, category: cat });
-        });
-      });
-      return allTasks;
-    }
-
-    function showOnlyCategory(cat) {
-      categories.forEach(category => {
-        document.getElementById(category).classList.toggle('hidden', category !== cat);
-      });
-      showAllBtn.style.display = "inline-block";
-    }
-
-    function showAllCategories() {
-      categories.forEach(category => {
-        document.getElementById(category).classList.remove('hidden');
-      });
-      showAllBtn.style.display = "none";
-      loadTasks();
-    }
-
-    function createTaskRow(category, taskObj, idx, total) {
-      const row = document.createElement("div");
-      row.className = "task-row";
-
-const taskText = document.createElement("span");
-taskText.className = "task-text";
 
 // 👇 Add task number (#1, #2, etc. per category)
 const taskNumber = idx + 1;
