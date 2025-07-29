@@ -1149,8 +1149,124 @@ silenceTimeout = setTimeout(() => {
       }
     }
 
- 
+ async function askGpt(userQuestion) {
+  const OPENAI_API_KEY = getOpenAIKey();
+  if (!OPENAI_API_KEY) {
+    alert("Please enter and save your OpenAI API key.");
+    return "";
+  }
 
+  gptAnswer.textContent = "";
+  const tasks = getAllTasks();
+
+  let maxTokens = 200; // Default token limit for short replies
+
+  // 🧠 Handle "show all tasks" locally
+  if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(userQuestion)) {
+    const grouped = {};
+    tasks.forEach(t => {
+      if (!grouped[t.category]) grouped[t.category] = [];
+      grouped[t.category].push(t.text + (t.date ? ` (${t.date.slice(0, 10)})` : ""));
+    });
+
+    // HTML output
+    let html = "";
+    for (const [cat, taskList] of Object.entries(grouped)) {
+      html += `<strong>${cat}:</strong><ul>` + taskList.map(t => `<li>${t}</li>`).join('') + "</ul>";
+    }
+    gptAnswer.innerHTML = html;
+
+    // TTS summary
+    const summary = Object.entries(grouped)
+      .map(([cat, tasks]) => `${cat}: ${tasks.length} tasks`)
+      .join(". ");
+    await speakTextWithWebSpeech("Here is the summary. " + summary);
+    return;
+  }
+
+  // 🧠 Handle "all tasks in [category]" locally
+  const categoryList = categories.map(cat => cat.toLowerCase()).join('|');
+  const fullListRegex = new RegExp(`\\b(list|show)\\s+(all\\s+)?tasks?\\s*(in|from)?\\s*(${categoryList})(\\s*category)?\\b`, 'i');
+  const fullListMatch = userQuestion.match(fullListRegex);
+
+  if (fullListMatch && fullListMatch[4]) {
+    let matched = fullListMatch[4].trim().toLowerCase();
+    let requestedCategory = matched.charAt(0).toUpperCase() + matched.slice(1);
+    if (categories.includes(requestedCategory)) {
+      const catTasks = tasks.filter(t => t.category === requestedCategory);
+      let html = `<strong>${requestedCategory}:</strong><ul>` +
+        catTasks.map((t, i) =>
+          `<li>${i + 1}. ${t.text}${t.date ? ` (${t.date.slice(0, 10)})` : ""}</li>`
+        ).join('') + "</ul>";
+      gptAnswer.innerHTML = html;
+      await speakTextWithWebSpeech(`You have ${catTasks.length} tasks in the ${requestedCategory} category.`);
+      return;
+    }
+  }
+
+  // ✉️ Otherwise, build a normal GPT prompt
+  let prompt = `Here are my tasks, grouped and numbered per category:\n`;
+  categories.forEach((cat) => {
+    const catTasks = tasks.filter(t => t.category === cat);
+    if (catTasks.length > 0) {
+      prompt += `\n${cat}:\n` + catTasks.map((t, i) =>
+        `${i + 1}. ${t.text}${t.date ? ' (' + t.date.slice(0, 10) + ')' : ''}`
+      ).join("\n") + "\n";
+    }
+  });
+
+  prompt += `\n\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences unless user asked for a full list.`;
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + OPENAI_API_KEY
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "You are a helpful personal task assistant." },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 1500 // safe upper limit
+      })
+    });
+
+    const data = await res.json();
+    let answer = "";
+
+    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+      answer = data.choices[0].message.content.trim();
+    } else {
+      answer = data.error ? "API Error: " + data.error.message : "No response from GPT.";
+    }
+
+    // Clean and format response
+    let cleanedAnswer = answer.replace(/^.*?\b(is|are):/i, '').trim();
+    let lines = cleanedAnswer
+      .split(/(?:\r?\n|(?:^|[^\d])[\*\-\•]\s+|\d+\.\s+)+/)
+      .map(line => line.trim())
+      .filter(line => line.length > 2 && !/^ok$/i.test(line));
+
+    let formattedAnswer = '<ul>' + lines.map(
+      line => `<li>${line}</li>`
+    ).join('') + '</ul>';
+
+    gptAnswer.innerHTML = formattedAnswer;
+
+    await speakTextWithWebSpeech(lines.slice(0, 5).join(". ") + ".");
+    return answer;
+
+  } catch (err) {
+    gptAnswer.textContent = "Request failed: " + err.message;
+    return "Request failed: " + err.message;
+  }
+}
+
+
+    
     // Platform-specific voice selection
 // Restore silence control settings from localStorage
 window.addEventListener("load", () => {
@@ -1183,11 +1299,7 @@ function getBestVoice() {
   //JD end
 
     // Interruptible TTS
-  // Declare this once at top level, outside any function
-let ttsSpokenForCurrentRequest = false;
-
-// Speak text using Web Speech API with cancellation of ongoing speech
-function speakTextWithWebSpeech(text) {
+   function speakTextWithWebSpeech(text) {
   return new Promise((resolve) => {
     const synth = window.speechSynthesis;
     if (!synth) {
@@ -1196,13 +1308,10 @@ function speakTextWithWebSpeech(text) {
       return;
     }
 
-    // Cancel ongoing or queued speech to avoid overlapping/queued voices
-    if (synth.speaking || synth.pending) {
-      synth.cancel();
-    }
-
+    // Wait for voices to load if needed
     const speak = () => {
       const utter = new SpeechSynthesisUtterance(text);
+// Use default system voice (browser determines best)
       utter.pitch = 1;
       utter.rate = 0.97;
       utter.onend = () => resolve();
@@ -1211,154 +1320,50 @@ function speakTextWithWebSpeech(text) {
     };
 
     if (speechSynthesis.getVoices().length === 0) {
+      // Voices not loaded yet
       speechSynthesis.onvoiceschanged = () => {
         speak();
       };
     } else {
+      // Voices already loaded
       speak();
     }
   });
 }
 
-// Main function to handle user questions about tasks and chat with GPT
-async function askGpt(userQuestion) {
-  const OPENAI_API_KEY = getOpenAIKey();
-  if (!OPENAI_API_KEY) {
-    alert("Please enter and save your OpenAI API key.");
-    return "";
-  }
 
-  // Reset per-request TTS call flag
-  ttsSpokenForCurrentRequest = false;
-
-  // Clear previous GPT answer display
-  gptAnswer.textContent = "";
-
-  // Fetch all tasks from local storage or your data source
-  const tasks = getAllTasks();
-
-  // Normalize user input for easier regex matching
-  const normalizedQ = userQuestion.toLowerCase();
-
-  // Helper to safely speak only once per call
-  async function safeSpeak(text) {
-    if (!ttsSpokenForCurrentRequest) {
-      ttsSpokenForCurrentRequest = true;
-      await speakTextWithWebSpeech(text);
-    }
-  }
-
-  // Handle "list all tasks" or similar — show full tasks locally without GPT call
-  if (/\b(list all tasks|show all tasks|show everything|all tasks)\b/i.test(normalizedQ)) {
-    const grouped = {};
-    tasks.forEach(t => {
-      if (!grouped[t.category]) grouped[t.category] = [];
-      grouped[t.category].push(t.text + (t.date ? ` (${t.date.slice(0, 10)})` : ""));
-    });
-
-    let html = "";
-    for (const [cat, taskList] of Object.entries(grouped)) {
-      html += `<strong>${cat}:</strong><ul>` 
-           + taskList.map(t => `<li>${t}</li>`).join('') + "</ul>";
-    }
-    gptAnswer.innerHTML = html;
-
-    const summary = Object.entries(grouped)
-      .map(([cat, tasks]) => `${cat}: ${tasks.length} task${tasks.length !== 1 ? 's' : ''}`)
-      .join(". ");
-
-    await safeSpeak("Here is the summary. " + summary);
-    return;  // Early return to avoid GPT call and extra TTS
-  }
-
-  // Handle "list all tasks in [category]" locally
-  const categoryList = categories.map(cat => cat.toLowerCase()).join('|');
-  const fullListRegex = new RegExp(`\\b(list|show)\\s+(all\\s+)?tasks?\\s*(in|from)?\\s*(${categoryList})(\\s*category)?\\b`, 'i');
-  const fullListMatch = normalizedQ.match(fullListRegex);
-
-  if (fullListMatch && fullListMatch[4]) {
-    let matched = fullListMatch[4].trim().toLowerCase();
-    let requestedCategory = matched.charAt(0).toUpperCase() + matched.slice(1);  // Capitalize first letter
-    if (categories.includes(requestedCategory)) {
-      const catTasks = tasks.filter(t => t.category === requestedCategory);
-      let html = `<strong>${requestedCategory}:</strong><ul>` +
-        catTasks.map((t, i) =>
-          `<li>${i + 1}. ${t.text}${t.date ? ` (${t.date.slice(0, 10)})` : ""}</li>`
-        ).join('') + "</ul>";
-      gptAnswer.innerHTML = html;
-
-      await safeSpeak(`You have ${catTasks.length} task${catTasks.length !== 1 ? 's' : ''} in the ${requestedCategory} category.`);
-      return;  // Early return to avoid GPT call and extra TTS
-    }
-  }
-
-  // Otherwise, build prompt for GPT: show short answers by default
-  let prompt = `Here are my tasks, grouped and numbered per category:\n`;
-  categories.forEach((cat) => {
-    const catTasks = tasks.filter(t => t.category === cat);
-    if (catTasks.length > 0) {
-      prompt += `\n${cat}:\n` + catTasks.map((t, i) =>
-        `${i + 1}. ${t.text}${t.date ? ' (' + t.date.slice(0, 10) + ')' : ''}`
-      ).join("\n") + "\n";
-    }
-  });
-
-  prompt += `\n\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences unless user asked for a full list.`;
-
-  try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + OPENAI_API_KEY
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: "You are a helpful personal task assistant." },
-          { role: "user", content: prompt }
-        ],
-        max_tokens: 1500
-      })
-    });
-
-    const data = await res.json();
-    let answer = "";
-
-    if (data?.choices?.[0]?.message?.content) {
-      answer = data.choices[0].message.content.trim();
-    } else {
-      answer = data.error ? "API Error: " + data.error.message : "No response from GPT.";
+    function getAllTasks() {
+      const allTasks = [];
+      categories.forEach(cat => {
+        const catTasks = JSON.parse(localStorage.getItem(cat)) || [];
+        catTasks.forEach(taskObj => {
+          allTasks.push({ ...taskObj, category: cat });
+        });
+      });
+      return allTasks;
     }
 
-    // Clean GPT answer to extract list items if possible
-    let cleanedAnswer = answer.replace(/^.*?\b(is|are|the following|tasks?):/i, '').trim();
-
-    // Split by new lines or list markers (numbers, bullets) and filter short/filler lines
-    let lines = cleanedAnswer
-      .split(/(?:\r?\n|(?:^|[^\d])[\*\-\•]\s+|\d+\.\s+)+/)
-      .map(line => line.trim())
-      .filter(line => line.length > 2 && !/^ok$/i.test(line));
-
-    if (lines.length === 0) {
-      // If splitting failed, just set raw GPT answer text
-      gptAnswer.textContent = answer;
-    } else {
-      // Format as HTML list
-      const formattedAnswer = '<ul>' + lines.map(line => `<li>${line}</li>`).join('') + '</ul>';
-      gptAnswer.innerHTML = formattedAnswer;
+    function showOnlyCategory(cat) {
+      categories.forEach(category => {
+        document.getElementById(category).classList.toggle('hidden', category !== cat);
+      });
+      showAllBtn.style.display = "inline-block";
     }
 
-    // Speak only first 5 lines or summary
-    await safeSpeak(lines.slice(0, 5).join(". ") + ".");
+    function showAllCategories() {
+      categories.forEach(category => {
+        document.getElementById(category).classList.remove('hidden');
+      });
+      showAllBtn.style.display = "none";
+      loadTasks();
+    }
 
-    return answer;
+    function createTaskRow(category, taskObj, idx, total) {
+      const row = document.createElement("div");
+      row.className = "task-row";
 
-  } catch (err) {
-    gptAnswer.textContent = "Request failed: " + err.message;
-    return "Request failed: " + err.message;
-  }
-}
+const taskText = document.createElement("span");
+taskText.className = "task-text";
 
 // 👇 Add task number (#1, #2, etc. per category)
 const taskNumber = idx + 1;
