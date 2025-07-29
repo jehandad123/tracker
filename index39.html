@@ -1233,7 +1233,6 @@ silenceTimeout = setTimeout(() => {
         max_tokens: 1500 // safe upper limit
       })
     });
-
     const data = await res.json();
     let answer = "";
 
@@ -1256,9 +1255,17 @@ silenceTimeout = setTimeout(() => {
 
     gptAnswer.innerHTML = formattedAnswer;
 
-    await speakTextWithWebSpeech(lines.slice(0, 5).join(". ") + ".");
+    // ✅ Prevent double speaking
+    if (!ttsHandled && lines.length > 0) {
+      const shortSpeech = lines.slice(0, 5).join(". ") + ".";
+      if (shortSpeech.length < 500) { // safety in case it's way too long
+        await speakTextWithWebSpeech(shortSpeech);
+      }
+    }
+
     return answer;
 
+   
   } catch (err) {
     gptAnswer.textContent = "Request failed: " + err.message;
     return "Request failed: " + err.message;
