@@ -667,34 +667,59 @@ loadTasks();
     let mediaRecorder, audioChunks = [];
     let silenceTimeout, audioContext, analyser, source, stream;
 
-// ---- Wake Lock API ----
+// ---- Screen Awake Helper ----
 let wakeLock = null;
+let videoElement = null;
 
-async function enableWakeLock() {
-  try {
-    wakeLock = await navigator.wakeLock.request("screen");
-    console.log("Wake Lock is active");
-  } catch (err) {
-    console.error("Wake Lock error:", err);
+async function enableScreenAwake() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log("Wake Lock API active");
+    } catch (err) {
+      console.warn("Wake Lock failed, falling back:", err);
+      startVideoFallback();
+    }
+  } else {
+    startVideoFallback();
   }
 }
 
-async function disableWakeLock() {
+async function disableScreenAwake() {
   if (wakeLock !== null) {
-    await wakeLock.release();
+    try {
+      await wakeLock.release();
+      console.log("Wake Lock released");
+    } catch (err) {
+      console.warn("Wake Lock release failed:", err);
+    }
     wakeLock = null;
-    console.log("Wake Lock released");
+  }
+  stopVideoFallback();
+}
+
+function startVideoFallback() {
+  if (!videoElement) {
+    videoElement = document.createElement("video");
+    videoElement.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAAAAGlzb21pc28ybXA0MQAA"; 
+    videoElement.loop = true;
+    videoElement.muted = true;
+    videoElement.playsInline = true;
+    videoElement.style.display = "none";
+    document.body.appendChild(videoElement);
+  }
+  videoElement.play().catch(err => console.warn("Fallback play error:", err));
+  console.log("Fallback video hack active");
+}
+
+function stopVideoFallback() {
+  if (videoElement) {
+    videoElement.pause();
+    console.log("Fallback video hack stopped");
   }
 }
 
-// Reacquire if page becomes visible again
-document.addEventListener("visibilitychange", async () => {
-  if (wakeLock !== null && document.visibilityState === "visible") {
-    wakeLock = await navigator.wakeLock.request("screen");
-  }
-});
 
-     
      
     speakBtn.onclick = async () => {
       await unlockTTS();
@@ -777,7 +802,6 @@ function stopListening() {
         mediaRecorder.stop();
       }
       cleanupAudio();
-      disableWakeLock();
     };
 
     interruptTTSBtn.onclick = () => {
@@ -965,7 +989,7 @@ if (moveMatch) {
   stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   mediaRecorder = new MediaRecorder(stream);
   mediaRecorder.start();
-  enableWakeLock();
+      enableScreenAwake();
   const recordingStartTime = Date.now();
 let activeFrameCount = 0; // ✅ Add here
   buttonElem.textContent = "⏹️ Stop Recording";
@@ -1165,20 +1189,21 @@ silenceTimeout = setTimeout(() => {
       }
     }
 
-   function cleanupAudio() {
+  function cleanupAudio() {
   if (audioContext) {
     audioContext.close();
     audioContext = null;
   }
-  // ⚠️ Do NOT stop the mic stream tracks here
-  // This keeps the mic permission/session alive across multiple recordings
-
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
   if (silenceTimeout) {
     clearTimeout(silenceTimeout);
     silenceTimeout = null;
   }
-disableWakeLock();   // <-- release screen lock
-   }
+  disableScreenAwake();   // <-- release screen lock or fallback
+}
 
 
    let conversationHistory = [];
