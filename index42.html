@@ -668,6 +668,7 @@ loadTasks();
     let silenceTimeout, audioContext, analyser, source, stream;
 
      // Use a shared mic stream so Chrome only asks once per session
+// Use a shared mic stream so Chrome only asks once per session
 let sharedStream = null;
 
 async function getSharedStream() {
@@ -677,8 +678,6 @@ async function getSharedStream() {
   }
   return sharedStream;
 }
-
-
      
     speakBtn.onclick = async () => {
       await unlockTTS();
@@ -758,7 +757,9 @@ function stopListening() {
       interruptTTSBtn.style.display = "none";
       muteMicBtn.style.display = "none";
       if (isRecording && mediaRecorder) {
-        mediaRecorder.stop();
+if (mediaRecorder && mediaRecorder.state !== "inactive") {
+  mediaRecorder.stop();
+}
       }
       cleanupAudio();
     };
@@ -945,9 +946,31 @@ if (moveMatch) {
 
   isRecording = true;
   audioChunks = [];
-  stream = await getSharedStream();
-mediaRecorder = new MediaRecorder(stream);
-  mediaRecorder.start();
+ stream = await getSharedStream();
+
+// Reset audio chunks each cycle
+audioChunks = [];
+
+// Clone the stream so each MediaRecorder is fresh
+const clonedStream = new MediaStream(stream.getTracks().map(track => track.clone()));
+
+mediaRecorder = new MediaRecorder(clonedStream);
+
+// Make sure your handlers are attached *here*, not once globally
+mediaRecorder.ondataavailable = e => {
+  if (e.data.size > 0) {
+    audioChunks.push(e.data);
+  }
+};
+
+mediaRecorder.onstop = async () => {
+  const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+  // 🚀 send audioBlob to AssemblyAI here (same as your existing code)
+};
+
+// Start recording
+mediaRecorder.start();
+
   const recordingStartTime = Date.now();
 let activeFrameCount = 0; // ✅ Add here
   buttonElem.textContent = "⏹️ Stop Recording";
@@ -988,7 +1011,9 @@ const SILENCE_THRESHOLD = Number(document.getElementById("silenceThresholdInput"
 
 silenceTimeout = setTimeout(() => {
   if (isRecording) {
-    mediaRecorder.stop();
+if (mediaRecorder && mediaRecorder.state !== "inactive") {
+  mediaRecorder.stop();
+}   
     cleanupAudio();
   }
 }, silenceMs);
