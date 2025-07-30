@@ -701,7 +701,7 @@ async function disableScreenAwake() {
 function startVideoFallback() {
   if (!videoElement) {
     videoElement = document.createElement("video");
-    videoElement.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAAAAGlzb21pc28ybXA0MQAA"; 
+   videoElement.src = "https://www.w3schools.com/html/mov_bbb.mp4"; 
     videoElement.loop = true;
     videoElement.muted = true;
     videoElement.playsInline = true;
@@ -1194,10 +1194,7 @@ silenceTimeout = setTimeout(() => {
     audioContext.close();
     audioContext = null;
   }
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-    stream = null;
-  }
+// ⚠️ Don't stop the mic tracks here, keep stream alive for session
   if (silenceTimeout) {
     clearTimeout(silenceTimeout);
     silenceTimeout = null;
