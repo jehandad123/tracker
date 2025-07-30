@@ -701,7 +701,8 @@ async function disableScreenAwake() {
 function startVideoFallback() {
   if (!videoElement) {
     videoElement = document.createElement("video");
-   videoElement.src = "https://cdn.jsdelivr.net/gh/anars/blank-audio/1-second-of-silence.mp3";
+ videoElement.src = "https://upload.wikimedia.org/wikipedia/commons/transcoded/4/4c/Saint_Antony-of-Padua_calms_the_storm.ogg/Saint_Antony-of-Padua_calms_the_storm.ogg.mp4";
+
     videoElement.loop = true;
     videoElement.muted = true;
     videoElement.playsInline = true;
