@@ -991,6 +991,7 @@ if (moveMatch) {
   mediaRecorder = new MediaRecorder(stream);
   mediaRecorder.start();
       enableScreenAwake();
+      startVideoFallback();   // <-- keep screen awake fallback
   const recordingStartTime = Date.now();
 let activeFrameCount = 0; // ✅ Add here
   buttonElem.textContent = "⏹️ Stop Recording";
