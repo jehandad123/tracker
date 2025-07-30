@@ -701,7 +701,7 @@ async function disableScreenAwake() {
 function startVideoFallback() {
   if (!videoElement) {
     videoElement = document.createElement("video");
-   videoElement.src = "https://www.w3schools.com/html/mov_bbb.mp4"; 
+   videoElement.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAAAAGlzb20ybXA0MQAAAAhmcmVlAAAAIG1kYXQAAAAAAAACAAACwAAAAAA=";
     videoElement.loop = true;
     videoElement.muted = true;
     videoElement.playsInline = true;
