@@ -701,7 +701,7 @@ async function disableScreenAwake() {
 function startVideoFallback() {
   if (!videoElement) {
     videoElement = document.createElement("video");
-   videoElement.src = "data:video/mp4;base64,AAAAHGZ0eXBpc29tAAAAAGlzb20ybXA0MQAAAAhmcmVlAAAAIG1kYXQAAAAAAAACAAACwAAAAAA=";
+   videoElement.src = "https://cdn.jsdelivr.net/gh/anars/blank-audio/1-second-of-silence.mp3";
     videoElement.loop = true;
     videoElement.muted = true;
     videoElement.playsInline = true;
