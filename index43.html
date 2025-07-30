@@ -1057,7 +1057,7 @@ silenceTimeout = setTimeout(() => {
     buttonElem.textContent = buttonElem === speakBtn ? "🎙️ Speak" : "🤖 Hands Free";
     buttonElem.classList.remove("recording");
     cleanupAudio();
-
+  
     transcriptDiv.textContent = "Uploading and transcribing...";
     const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
 
@@ -1202,6 +1202,7 @@ silenceTimeout = setTimeout(() => {
     silenceTimeout = null;
   }
   disableScreenAwake();   // <-- release screen lock or fallback
+  stopVideoFallback();
 }
 
 
