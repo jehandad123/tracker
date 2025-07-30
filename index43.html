@@ -701,7 +701,7 @@ async function disableScreenAwake() {
 function startVideoFallback() {
   if (!videoElement) {
     videoElement = document.createElement("video");
-videoElement.src = "https://storage.googleapis.com/web-dev-assets/video-and-source-tags/chrome.webm";
+videoElement.src = "silent.mp4"; // served from your repo over HTTPS
 
     videoElement.loop = true;
     videoElement.muted = true;
