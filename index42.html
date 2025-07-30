@@ -667,18 +667,6 @@ loadTasks();
     let mediaRecorder, audioChunks = [];
     let silenceTimeout, audioContext, analyser, source, stream;
 
-     // Use a shared mic stream so Chrome only asks once per session
-// Use a shared mic stream so Chrome only asks once per session
-let sharedStream = null;
-
-async function getSharedStream() {
-  if (!sharedStream) {
-    // Request mic access only once per session
-    sharedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  }
-  return sharedStream;
-}
-     
     speakBtn.onclick = async () => {
       await unlockTTS();
       if (isRecording || isConversation) return;
@@ -757,9 +745,7 @@ function stopListening() {
       interruptTTSBtn.style.display = "none";
       muteMicBtn.style.display = "none";
       if (isRecording && mediaRecorder) {
-if (mediaRecorder && mediaRecorder.state !== "inactive") {
-  mediaRecorder.stop();
-}
+        mediaRecorder.stop();
       }
       cleanupAudio();
     };
@@ -946,31 +932,9 @@ if (moveMatch) {
 
   isRecording = true;
   audioChunks = [];
- stream = await getSharedStream();
-
-// Reset audio chunks each cycle
-audioChunks = [];
-
-// Clone the stream so each MediaRecorder is fresh
-const clonedStream = new MediaStream(stream.getTracks().map(track => track.clone()));
-
-mediaRecorder = new MediaRecorder(clonedStream);
-
-// Make sure your handlers are attached *here*, not once globally
-mediaRecorder.ondataavailable = e => {
-  if (e.data.size > 0) {
-    audioChunks.push(e.data);
-  }
-};
-
-mediaRecorder.onstop = async () => {
-  const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-  // 🚀 send audioBlob to AssemblyAI here (same as your existing code)
-};
-
-// Start recording
-mediaRecorder.start();
-
+  stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.start();
   const recordingStartTime = Date.now();
 let activeFrameCount = 0; // ✅ Add here
   buttonElem.textContent = "⏹️ Stop Recording";
@@ -1011,9 +975,7 @@ const SILENCE_THRESHOLD = Number(document.getElementById("silenceThresholdInput"
 
 silenceTimeout = setTimeout(() => {
   if (isRecording) {
-if (mediaRecorder && mediaRecorder.state !== "inactive") {
-  mediaRecorder.stop();
-}   
+    mediaRecorder.stop();
     cleanupAudio();
   }
 }, silenceMs);
@@ -1172,20 +1134,20 @@ if (mediaRecorder && mediaRecorder.state !== "inactive") {
       }
     }
 
-    function cleanupAudio() {
-      if (audioContext) {
-        audioContext.close();
-        audioContext = null;
-      }
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-      }
-      if (silenceTimeout) {
-        clearTimeout(silenceTimeout);
-        silenceTimeout = null;
-      }
-    }
+   function cleanupAudio() {
+  if (audioContext) {
+    audioContext.close();
+    audioContext = null;
+  }
+  // ⚠️ Do NOT stop the mic stream tracks here
+  // This keeps the mic permission/session alive across multiple recordings
+
+  if (silenceTimeout) {
+    clearTimeout(silenceTimeout);
+    silenceTimeout = null;
+  }
+}
+
 
    let conversationHistory = [];
 const maxHistory = 3;
