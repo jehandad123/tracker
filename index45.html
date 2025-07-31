@@ -626,16 +626,28 @@ loadTasks();
       loadTasks();
       transcriptDiv.textContent += `\n[Parsed: ${JSON.stringify({task: cleanedTask, category: normalizedCategory})}] → Task added.`;
       gptAnswer.textContent = "";
-      let speechQueue = [];   // store promises for each spoken chunk
-
       // speakTextWithWebSpeech("Task added to " + normalizedCategory + " category.");
     }
 
-    addManualBtn.onclick = () => {
-      const inputText = manualInput.value;
-      addTask(inputText);
-      manualInput.value = "";
-    };
+   addManualBtn.onclick = async () => {
+  const inputText = manualInput.value.trim();
+  manualInput.value = "";
+
+  if (!inputText) return;
+
+  if (inputText.toLowerCase().startsWith("gpt ")) {
+    // 🧠 GPT mode
+    const question = inputText.slice(4).trim();
+    gptAnswer.textContent = "Thinking...";
+    const answer = await askGpt(question);
+    // Optionally also speak the answer
+    await speakTextWithWebSpeech(answer);
+  } else {
+    // 📝 Task mode
+    addTask(inputText);
+  }
+};
+
 
     // ====== BACKUP/RESTORE ======
     exportTasksBtn.onclick = function() {
@@ -953,13 +965,13 @@ if (moveMatch) {
 
         if (!handled) {
           try {
-         const gptResponse = await askGptStream(toParse);
-gptLoading.style.display = "none";
-lastGptResponse = gptResponse;
-// Don’t re‑speak, don’t rush mic restart — askGptStream already waited for TTS
-playBeep();
-await sleep(250);
-
+            const gptResponse = await askGpt(toParse);
+            gptLoading.style.display = "none";
+            lastGptResponse = gptResponse;
+            await speakTextWithWebSpeech(gptResponse);
+            await sleep(400);
+            playBeep();
+            await sleep(250);
           } catch (e) {
             gptLoading.style.display = "none";
             await speakTextWithWebSpeech("Sorry, can you repeat please.");
@@ -1209,7 +1221,7 @@ silenceTimeout = setTimeout(() => {
 
 
    let conversationHistory = [];
-const maxHistory = 3;
+const maxHistory = 6;
 
 async function askGpt(userQuestion) {
   const OPENAI_API_KEY = getOpenAIKey();
@@ -1218,7 +1230,6 @@ async function askGpt(userQuestion) {
     return "";
   }
   gptAnswer.textContent = "";
-
   const tasks = getAllTasks();
 
   let maxTokens = 200; // keep replies short by default
@@ -1256,7 +1267,33 @@ async function askGpt(userQuestion) {
 
   try {
     // Build messages including last 5 exchanges
-    let messages = [{ role: "system", content: "You are a helpful personal task assistant." }];
+   let messages = [{
+  role: "system",
+  content: `
+You are a helpful personal task assistant. 
+You ALWAYS retrieve tasks from the provided list based on the user's request. 
+
+Rules:
+- Match both exact words and semantically related concepts.
+- For example: if the user asks "doctor", include ENT, dentist, cardiologist, checkup, hospital, appointment.
+- If the user asks about a person (e.g. Michael Brown), include ALL tasks that mention them in any way.
+- Do NOT summarize or skip. Return every relevant task word-for-word.
+- If none are found, say: "No tasks found."
+
+Examples:
+User: show all tasks with doctor
+Answer:
+- Appointment with ENT specialist
+- Schedule cardiologist follow-up
+- Call dentist for cleaning
+
+User: show Michael tasks
+Answer:
+- Prepare deck for Michael Johnson
+- Email Michael Walton about meeting
+`
+}];
+
     let history = conversationHistory.slice(-maxHistory);
     messages.push(...history);
     messages.push({ role: "user", content: prompt });
@@ -1311,109 +1348,6 @@ async function askGpt(userQuestion) {
   }
 }
 
-async function askGpt(userQuestion) {
-  // your current implementation...
-}
- 
-// ⬇️ paste here
-async function askGptStream(userQuestion) {
-  const OPENAI_API_KEY = getOpenAIKey();
-  if (!OPENAI_API_KEY) {
-    alert("Please enter and save your OpenAI API key.");
-    return "";
-  }
-
-  gptAnswer.textContent = "";
- let speechQueue = [];   // ⬅️ ADD IT HERE inside askGptStream
-// 🔹 Build task context
-const tasks = getAllTasks();
-let prompt = "Here are my tasks, grouped and numbered per category:\n";
-
-categories.forEach((cat) => {
-  const catTasks = tasks.filter(t => t.category === cat);
-  if (catTasks.length > 0) {
-    prompt += `\n${cat}:\n` + catTasks.map((t, i) =>
-      `${i + 1}. ${t.text}${t.date ? ' (' + t.date.slice(0, 10) + ')' : ''}`
-    ).join("\n") + "\n";
-  }
-});
-
-prompt += `\n\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences unless user asked for a full list.`;
-
-  
- let messages = [
-  { role: "system", content: "You are a helpful personal task assistant." },
-  ...conversationHistory.slice(-maxHistory),
-  { role: "user", content: prompt }
-];
-
-
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + OPENAI_API_KEY
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages,
-      stream: true
-    })
-  });
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder("utf-8");
-  let buffer = "";
-  let sentenceBuffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-
-    for (let line of lines) {
-      if (line.trim() === "" || !line.startsWith("data:")) continue;
-      if (line.trim() === "data: [DONE]") return;
-
-      const data = JSON.parse(line.replace("data: ", ""));
-      const token = data.choices?.[0]?.delta?.content;
-    if (token) {
-  // Always collect into buffer
-  sentenceBuffer += token;
-
-  // Show current buffer live in UI (instead of raw tokens)
-  gptAnswer.innerText = sentenceBuffer;
-
-  // Detect sentence end → speak and reset buffer
-  if (/[.!?]\s$/.test(sentenceBuffer)) {
-    const toSpeak = sentenceBuffer.trim();
-    sentenceBuffer = "";
-    speechQueue.push(speakTextWithWebSpeech(toSpeak));
-  }
-}
-
-    }
-
-    buffer = lines[lines.length - 1];
-  }
-
-  // If leftover text not spoken yet
-// If leftover text not spoken yet, add it too
-// If leftover text not spoken yet, also speak it
-if (sentenceBuffer.trim()) {
-  speechQueue.push(speakTextWithWebSpeech(sentenceBuffer.trim()));
-}
-
-// ✅ Wait for ALL speech to finish before resolving
-await Promise.all(speechQueue);
-return "Spoken response completed";
-
-
-}
-
-     
     // Platform-specific voice selection
 // Restore silence control settings from localStorage
 window.addEventListener("load", () => {
