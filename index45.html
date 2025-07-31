@@ -626,6 +626,8 @@ loadTasks();
       loadTasks();
       transcriptDiv.textContent += `\n[Parsed: ${JSON.stringify({task: cleanedTask, category: normalizedCategory})}] → Task added.`;
       gptAnswer.textContent = "";
+      let speechQueue = [];   // store promises for each spoken chunk
+
       // speakTextWithWebSpeech("Task added to " + normalizedCategory + " category.");
     }
 
@@ -1382,11 +1384,12 @@ prompt += `\n\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences
         sentenceBuffer += token;
 
         // Detect sentence end → speak that chunk
-        if (/[.!?]\s$/.test(sentenceBuffer)) {
-          const toSpeak = sentenceBuffer.trim();
-          sentenceBuffer = "";
-          speakTextWithWebSpeech(toSpeak);
-        }
+      if (/[.!?]\s$/.test(sentenceBuffer)) {
+  const toSpeak = sentenceBuffer.trim();
+  sentenceBuffer = "";
+  speechQueue.push(speakTextWithWebSpeech(toSpeak)); // ⬅️ collect promise
+}
+
       }
     }
 
@@ -1394,9 +1397,15 @@ prompt += `\n\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences
   }
 
   // If leftover text not spoken yet
-  if (sentenceBuffer.trim()) {
-    await speakTextWithWebSpeech(sentenceBuffer.trim());
-  }
+// If leftover text not spoken yet, add it too
+if (sentenceBuffer.trim()) {
+  speechQueue.push(speakTextWithWebSpeech(sentenceBuffer.trim()));
+}
+
+// ✅ Wait for ALL speech to finish before resolving
+await Promise.all(speechQueue);
+return speechQueue.length ? "Spoken response completed" : "";
+
 }
 
      
