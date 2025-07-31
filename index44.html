@@ -1280,10 +1280,6 @@ Answer:
 `
 }];
 
-let history = conversationHistory.slice(-maxHistory);
-messages.push(...history);
-messages.push({ role: "user", content: prompt });
-
     let history = conversationHistory.slice(-maxHistory);
     messages.push(...history);
     messages.push({ role: "user", content: prompt });
