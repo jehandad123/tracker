@@ -951,10 +951,10 @@ if (moveMatch) {
 
         if (!handled) {
           try {
-          const gptResponse = await askGptStream(toParse);
-            gptLoading.style.display = "none";
-            lastGptResponse = gptResponse;
-            await speakTextWithWebSpeech(gptResponse);
+         const gptResponse = await askGptStream(toParse);
+gptLoading.style.display = "none";
+lastGptResponse = gptResponse;
+// ❌ don’t call speakTextWithWebSpeech here — askGptStream already streams + speaks
             await sleep(400);
             playBeep();
             await sleep(250);
@@ -1321,11 +1321,29 @@ async function askGptStream(userQuestion) {
   }
 
   gptAnswer.textContent = "";
-  let messages = [
-    { role: "system", content: "You are a helpful personal task assistant." },
-    ...conversationHistory.slice(-maxHistory),
-    { role: "user", content: userQuestion }
-  ];
+
+// 🔹 Build task context
+const tasks = getAllTasks();
+let prompt = "Here are my tasks, grouped and numbered per category:\n";
+
+categories.forEach((cat) => {
+  const catTasks = tasks.filter(t => t.category === cat);
+  if (catTasks.length > 0) {
+    prompt += `\n${cat}:\n` + catTasks.map((t, i) =>
+      `${i + 1}. ${t.text}${t.date ? ' (' + t.date.slice(0, 10) + ')' : ''}`
+    ).join("\n") + "\n";
+  }
+});
+
+prompt += `\n\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences unless user asked for a full list.`;
+
+  
+ let messages = [
+  { role: "system", content: "You are a helpful personal task assistant." },
+  ...conversationHistory.slice(-maxHistory),
+  { role: "user", content: prompt }
+];
+
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
