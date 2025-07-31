@@ -1274,68 +1274,39 @@ Include the task number and category as they appear in the input.`;
     }
   ];
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + OPENAI_API_KEY
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: messages,
-      max_tokens: 2000
-    })
-  });
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + OPENAI_API_KEY
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: messages,
+        max_tokens: 2000
+      })
+    });
 
-  const data = await res.json();
-  let answer = "";
+    const data = await res.json();
+    let answer = "";
 
-  if (data.choices && data.choices[0]?.message?.content) {
-    answer = data.choices[0].message.content.trim();
-  } else if (data.error) {
-    answer = "API Error: " + data.error.message;
-  } else {
-    answer = "No response from GPT.";
-  }
+    if (data.choices && data.choices[0]?.message?.content) {
+      answer = data.choices[0].message.content.trim();
+    } else if (data.error) {
+      answer = "API Error: " + data.error.message;
+    } else {
+      answer = "No response from GPT.";
+    }
 
-  return answer;
-}
+    return answer;
 
-  let taskChunks = [];
-let currentChunkIndex = 0;
-
-function chunkTasksFromGPT(rawText, chunkSize = 6) {
-  const lines = rawText.split(/\n+/).map(l => l.trim()).filter(Boolean);
-  taskChunks = [];
-  for (let i = 0; i < lines.length; i += chunkSize) {
-    taskChunks.push(lines.slice(i, i + chunkSize));
-  }
-  currentChunkIndex = 0;
-}
-
-function showNextChunk() {
-  if (currentChunkIndex < taskChunks.length) {
-    const chunk = taskChunks[currentChunkIndex];
-    const formatted = "<ul>" + chunk.map(line => `<li>${line}</li>`).join('') + "</ul>";
-    gptAnswer.innerHTML = formatted;
-
-    const suffix = (currentChunkIndex < taskChunks.length - 1)
-      ? "➡️ Get ready for the next chunk. Say 'continue' to proceed."
-      : "✅ End of tasks.";
-
-    gptAnswer.innerHTML += `<p style="margin-top:10px;">${suffix}</p>`;
-    currentChunkIndex++;
-  } else {
-    gptAnswer.innerHTML = "<p>✅ All tasks shown.</p>";
-  }
-}
-
-  
-  catch (err) {
+  } catch (err) {
     gptAnswer.textContent = "Request failed: " + err.message;
     return "Request failed: " + err.message;
   }
 }
+
 
     // Platform-specific voice selection
 // Restore silence control settings from localStorage
