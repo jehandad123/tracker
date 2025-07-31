@@ -1253,7 +1253,37 @@ async function askGpt(userQuestion) {
 
   try {
     // Build messages including last 5 exchanges
-    let messages = [{ role: "system", content: "You are a helpful personal task assistant." }];
+   let messages = [{
+  role: "system",
+  content: `
+You are a helpful personal task assistant. 
+You ALWAYS retrieve tasks from the provided list based on the user's request. 
+
+Rules:
+- Match both exact words and semantically related concepts.
+- For example: if the user asks "doctor", include ENT, dentist, cardiologist, checkup, hospital, appointment.
+- If the user asks about a person (e.g. Michael Brown), include ALL tasks that mention them in any way.
+- Do NOT summarize or skip. Return every relevant task word-for-word.
+- If none are found, say: "No tasks found."
+
+Examples:
+User: show all tasks with doctor
+Answer:
+- Appointment with ENT specialist
+- Schedule cardiologist follow-up
+- Call dentist for cleaning
+
+User: show Michael tasks
+Answer:
+- Prepare deck for Michael Johnson
+- Email Michael Walton about meeting
+`
+}];
+
+let history = conversationHistory.slice(-maxHistory);
+messages.push(...history);
+messages.push({ role: "user", content: prompt });
+
     let history = conversationHistory.slice(-maxHistory);
     messages.push(...history);
     messages.push({ role: "user", content: prompt });
