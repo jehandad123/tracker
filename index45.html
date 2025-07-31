@@ -1288,7 +1288,8 @@ Rules:
 - For example: if the user asks "doctor", include ENT, dentist, cardiologist, checkup, hospital, appointment.
 - If the user asks about a person (e.g. Michael Walton), include ALL tasks that mention them in any way. Include even if only first or last name in tasks.
 - Do NOT summarize or skip. Return every relevant task word-for-word.
-- always highlight the category name and task number
+- always highlight the category name and task number.
+- When returning my tasks, if the total response is more than 200 words, break it into multiple chunks. Each chunk should contain no more than 5–6 tasks. At the end of each chunk, always write:"➡️ Get ready for the next chunk. Do you want me to continue?" Only continue when I confirm.
 - If none are found, say: "No tasks found."
 
 Examples:
