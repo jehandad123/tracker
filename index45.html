@@ -1379,19 +1379,21 @@ prompt += `\n\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences
 
       const data = JSON.parse(line.replace("data: ", ""));
       const token = data.choices?.[0]?.delta?.content;
-      if (token) {
-        // Append live to UI
-        gptAnswer.innerHTML += token;
-        sentenceBuffer += token;
+    if (token) {
+  // Always collect into buffer
+  sentenceBuffer += token;
 
-        // Detect sentence end → speak that chunk
-      if (/[.!?]\s$/.test(sentenceBuffer)) {
-  const toSpeak = sentenceBuffer.trim();
-  sentenceBuffer = "";
-  speechQueue.push(speakTextWithWebSpeech(toSpeak)); // ⬅️ collect promise
+  // Show current buffer live in UI (instead of raw tokens)
+  gptAnswer.innerText = sentenceBuffer;
+
+  // Detect sentence end → speak and reset buffer
+  if (/[.!?]\s$/.test(sentenceBuffer)) {
+    const toSpeak = sentenceBuffer.trim();
+    sentenceBuffer = "";
+    speechQueue.push(speakTextWithWebSpeech(toSpeak));
+  }
 }
 
-      }
     }
 
     buffer = lines[lines.length - 1];
@@ -1399,13 +1401,15 @@ prompt += `\n\nUser question: ${userQuestion}\n\nAnswer in 1–2 short sentences
 
   // If leftover text not spoken yet
 // If leftover text not spoken yet, add it too
+// If leftover text not spoken yet, also speak it
 if (sentenceBuffer.trim()) {
   speechQueue.push(speakTextWithWebSpeech(sentenceBuffer.trim()));
 }
 
 // ✅ Wait for ALL speech to finish before resolving
 await Promise.all(speechQueue);
-return speechQueue.length ? "Spoken response completed" : "";
+return "Spoken response completed";
+
 
 }
 
