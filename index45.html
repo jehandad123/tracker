@@ -956,10 +956,10 @@ if (moveMatch) {
          const gptResponse = await askGptStream(toParse);
 gptLoading.style.display = "none";
 lastGptResponse = gptResponse;
-// ❌ don’t call speakTextWithWebSpeech here — askGptStream already streams + speaks
-            await sleep(400);
-            playBeep();
-            await sleep(250);
+// Don’t re‑speak, don’t rush mic restart — askGptStream already waited for TTS
+playBeep();
+await sleep(250);
+
           } catch (e) {
             gptLoading.style.display = "none";
             await speakTextWithWebSpeech("Sorry, can you repeat please.");
@@ -1218,6 +1218,7 @@ async function askGpt(userQuestion) {
     return "";
   }
   gptAnswer.textContent = "";
+
   const tasks = getAllTasks();
 
   let maxTokens = 200; // keep replies short by default
@@ -1323,7 +1324,7 @@ async function askGptStream(userQuestion) {
   }
 
   gptAnswer.textContent = "";
-
+ let speechQueue = [];   // ⬅️ ADD IT HERE inside askGptStream
 // 🔹 Build task context
 const tasks = getAllTasks();
 let prompt = "Here are my tasks, grouped and numbered per category:\n";
