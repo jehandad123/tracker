@@ -1158,7 +1158,7 @@ silenceTimeout = setTimeout(() => {
             "Authorization": "Bearer " + OPENAI_API_KEY
           },
           body: JSON.stringify({
-            model: "GPT‑4o‑mini",
+            model: "gpt-4o-mini",
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userInput }
@@ -1265,7 +1265,7 @@ async function askGpt(userQuestion) {
         "Authorization": "Bearer " + OPENAI_API_KEY
       },
       body: JSON.stringify({
-        model: "GPT‑4o‑mini",
+        model: "gpt-4o-mini",
         messages: messages,
         max_tokens: maxTokens
       })
