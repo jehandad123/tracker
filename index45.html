@@ -647,6 +647,11 @@ loadTasks();
     addTask(inputText);
   }
 };
+manualInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    addManualBtn.click();
+  }
+});
 
 
     // ====== BACKUP/RESTORE ======
