@@ -765,6 +765,8 @@ function stopVideoFallback() {
     stopListening(); // this should clean up UI, recognition, GPT, etc.
     handsFreeBtn.classList.remove("recording");
     handsFreeBtn.innerText = "🤖 Dialog";
+      // 🔄 Reload the page to fully reset mic and remove browser mic icon
+  location.reload();
     return;
   }
 
@@ -822,6 +824,9 @@ function stopListening() {
         mediaRecorder.stop();
       }
       cleanupAudio();
+      disableWakeLock();
+   // 🔄 Reload the page (removes mic icon at top of screen)
+  location.reload();   
     };
 
     interruptTTSBtn.onclick = () => {
