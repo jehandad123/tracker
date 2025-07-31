@@ -1277,7 +1277,7 @@ async function askGpt(userQuestion) {
 
   try {
     // Build messages including last 5 exchanges
-   let messages = [{
+  let messages = [{
   role: "system",
   content: `
 You are a helpful personal task assistant. 
@@ -1289,7 +1289,15 @@ Rules:
 - If the user asks about a person (e.g. Michael Walton), include ALL tasks that mention them in any way. Include even if only first or last name in tasks.
 - Do NOT summarize or skip. Return every relevant task word-for-word.
 - always highlight the category name and task number.
-- When returning my tasks, if the total response is more than 200 words, break it into multiple chunks. Each chunk should contain no more than 5–6 tasks. At the end of each chunk, always write:"➡️ Get ready for the next chunk. Do you want me to continue?" Only continue when I confirm.
+
+🚨 IMPORTANT RULE:
+- NEVER return more than **6 tasks in a single response**. 
+- If there are more than 6 tasks, split the output into **CHUNKS**. 
+- Each chunk must have a maximum of 6 tasks (or less if fewer remain).
+- At the end of each chunk, IF there are still tasks left, add this line exactly:
+"➡️ Get ready for the next chunk. Do you want me to continue?"
+- If it is the FINAL chunk, DO NOT add this line.
+
 - If none are found, say: "No tasks found."
 
 Examples:
