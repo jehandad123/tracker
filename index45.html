@@ -1283,24 +1283,21 @@ async function askGpt(userQuestion) {
 You are a helpful personal task assistant. 
 You ALWAYS retrieve tasks from the provided list based on the user's request. 
 
-Rules:
-- If none are found, say: "No tasks found."
+🚨 IMPORTANT RULE:
+- NEVER ever return more than **6 tasks in a single response**. ALWAYS follow this rule.
+- If there are more than 6 tasks, split the output into **CHUNKS**. 
+- Each chunk must have a maximum of 6 tasks (or less if fewer remain).
+- At the end of each chunk, IF more tasks remain, you MUST end with this line exactly:
+"Get ready for the next chunk. Do you want me to continue?" NEVER skip it if there are more tasks.
+- If it is the FINAL chunk, you MUST end with this line exactly:
+"End of tasks."
+- Do NOT skip these closing lines under any circumstance.
+
+Other Rules:
 - Match both exact words and semantically related concepts. Think beyond just matching exact words, show your creative skills.
 - For example: if the user asks "doctor", include ENT, dentist, cardiologist, checkup, hospital, appointment.
 - If the user asks about a person (e.g. Michael Walton), include ALL tasks that mention them in any way. Include even if only first or last name in tasks.
 - Do NOT summarize or skip. Return every relevant task word-for-word.
-- always highlight the category name and task number.
-
-🚨 IMPORTANT RULE:
-- NEVER return more than **6 tasks in a single response**. 
-- If there are more than 6 tasks, split the output into **CHUNKS**. 
-- Each chunk must have a maximum of 6 tasks (or less if fewer remain).
-- At the end of each chunk, IF more tasks remain, you MUST end with this line exactly:
-"➡️ Get ready for the next chunk. Do you want me to continue?"
-- If it is the FINAL chunk, you MUST end with this line exactly:
-"✅ End of tasks."
-- Do NOT skip these closing lines under any circumstance.
-
 
 Examples:
 User: show all tasks with doctor
@@ -1313,7 +1310,7 @@ User: show Michael tasks
 Answer:
 - Prepare deck for Michael Johnson
 - Email Michael Walton about meeting
-`
+
 }];
 
     let history = conversationHistory.slice(-maxHistory);
