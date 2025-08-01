@@ -635,23 +635,25 @@ loadTasks();
 
   if (!inputText) return;
 
- if (inputText.toLowerCase().startsWith("gpt ")) {
-  const question = inputText.slice(4).trim();
-  gptAnswer.textContent = "Thinking...";
-  const answer = await askGpt(question);
+  if (inputText.toLowerCase().startsWith("gpt ")) {
+    const question = inputText.slice(4).trim();
+    gptAnswer.textContent = "Thinking...";
+    const answer = await askGpt(question);
 
-  // 🆕 Split into chunks and display first chunk
-  chunkTasksFromGPT(answer);
-  showNextChunk();
+    // 🆕 Split into chunks and display first chunk
+    chunkTasksFromGPT(answer);
+    showNextChunk();
 
-  // 🗣️ Also speak
-  await speakTextWithWebSpeech("Here are the first tasks. Say continue for the next set.");
-}
- else {
+    // 🗣️ Speak the actual first chunk instead of placeholder
+    if (taskChunks.length > 0) {
+      await speakTextWithWebSpeech(taskChunks[0].join(". "));
+    }
+  } else {
     // 📝 Task mode
     addTask(inputText);
   }
 };
+
 manualInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     addManualBtn.click();
@@ -951,13 +953,16 @@ if (moveMatch) {
   }
   handled = true;
 }          
-        if (/^(continue|next|go on|keep going)$/i.test(lower)) {
+      if (/^(continue|next|go on|keep going)$/i.test(lower)) {
   showNextChunk();
-  await speakTextWithWebSpeech("Here you go.");
+  if (currentChunkIndex <= taskChunks.length) {
+    await speakTextWithWebSpeech(taskChunks[currentChunkIndex - 1].join(". "));
+  }
   await sleep(400); playBeep(); await sleep(250);
   handled = true;
   continue;
 }
+
 
           if (lower.startsWith("add ") || lower.startsWith("create ")) {
             const result = await extractTaskAndCategoryWithGPT(toParse);
@@ -994,7 +999,12 @@ gptLoading.style.display = "none";
 // Break filtered result into chunks
 chunkTasksFromGPT(gptResponse);
 showNextChunk();
-await speakTextWithWebSpeech("Here are the first tasks. Say continue for the next set.");
+
+// Speak the actual first chunk instead of placeholder
+if (taskChunks.length > 0) {
+  await speakTextWithWebSpeech(taskChunks[0].join(". "));
+}
+
 
             await sleep(400);
             playBeep();
