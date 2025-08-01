@@ -965,14 +965,14 @@ if (moveMatch) {
   }
   handled = true;
 }          
-     if (/^(continue|next|go on|keep going)$/i.test(lower)) {
+   if (/^(continue|next|go on|keep going)$/i.test(lower)) {
   showNextChunk();
   if (currentChunkIndex <= taskChunks.length) {
     await speakTextWithWebSpeech(taskChunks[currentChunkIndex - 1].join(". "));
   }
   await sleep(400); playBeep(); await sleep(250);
   handled = true;
-  return;   // ✅ prevents falling through to GPT again
+  continue;   // ✅ just skip GPT this round, stay in the loop
 }
 
 
