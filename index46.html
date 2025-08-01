@@ -635,14 +635,19 @@ loadTasks();
 
   if (!inputText) return;
 
-  if (inputText.toLowerCase().startsWith("gpt ")) {
-    // 🧠 GPT mode
-    const question = inputText.slice(4).trim();
-    gptAnswer.textContent = "Thinking...";
-    const answer = await askGpt(question);
-    // Optionally also speak the answer
-    await speakTextWithWebSpeech(answer);
-  } else {
+ if (inputText.toLowerCase().startsWith("gpt ")) {
+  const question = inputText.slice(4).trim();
+  gptAnswer.textContent = "Thinking...";
+  const answer = await askGpt(question);
+
+  // 🆕 Split into chunks and display first chunk
+  chunkTasksFromGPT(answer);
+  showNextChunk();
+
+  // 🗣️ Also speak
+  await speakTextWithWebSpeech("Here are the first tasks. Say continue for the next set.");
+}
+ else {
     // 📝 Task mode
     addTask(inputText);
   }
@@ -1262,9 +1267,13 @@ async function askGpt(userQuestion) {
 
   const systemPrompt = `
 You are a task filter engine.
-Your ONLY job is to read the list of tasks and return ONLY the tasks that match the user's request.
-DO NOT explain or summarize. DO NOT split into chunks. Just return the matching task lines word-for-word.
-Include the task number and category as they appear in the input.`;
+Your ONLY job is to read the list of tasks and return ONLY the tasks that directly match the user's request.
+- Match exact words and semantically related concepts.
+- DO NOT automatically return an entire category unless the user explicitly asks for "all tasks in [Category]".
+- DO NOT summarize or explain.
+- DO NOT chunk or paginate.
+Return only the matching task lines word-for-word, including task number and category.
+`;
 
   const messages = [
     { role: "system", content: systemPrompt },
