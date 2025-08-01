@@ -639,7 +639,8 @@ loadTasks();
     const question = inputText.slice(4).trim().toLowerCase();
 
     // 🆕 Handle "continue" locally, not with GPT
-    if (/^(continue|next|go on|keep going)$/i.test(question)) {
+   if (/\b(continue|next|go on|keep going)\b/i.test(question)) {
+
       showNextChunk();
       if (currentChunkIndex <= taskChunks.length) {
         await speakTextWithWebSpeech(taskChunks[currentChunkIndex - 1].join(". "));
@@ -1358,24 +1359,29 @@ function chunkTasksFromGPT(rawText, chunkSize = 6) {
   currentChunkIndex = 0;
 }
 
-function showNextChunk() {
+async function showNextChunk() {
   if (currentChunkIndex < taskChunks.length) {
     const chunk = taskChunks[currentChunkIndex];
-  const formatted = "<ul>" + chunk.map(line => 
-  `<li>${line.replace(/\[(.*?)\]/, "<b>[$1]</b>")}</li>`
-).join('') + "</ul>";
+    const formatted = "<ul>" + chunk.map(line => `<li>${line}</li>`).join('') + "</ul>";
     gptAnswer.innerHTML = formatted;
 
     const suffix = (currentChunkIndex < taskChunks.length - 1)
-      ? "➡️ Get ready for the next chunk. Say 'continue' to proceed."
+      ? "Get ready for the next chunk. Do you want me to continue?"
       : "✅ End of tasks.";
 
     gptAnswer.innerHTML += `<p style="margin-top:10px;">${suffix}</p>`;
     currentChunkIndex++;
+
+    // 🗣️ Speak both tasks and suffix
+    const chunkText = chunk.join(". ");
+    await speakTextWithWebSpeech(chunkText);
+    await speakTextWithWebSpeech(suffix);
   } else {
     gptAnswer.innerHTML = "<p>✅ All tasks shown.</p>";
+    await speakTextWithWebSpeech("End of tasks.");
   }
 }
+
 
 
     // Platform-specific voice selection
