@@ -639,32 +639,19 @@ loadTasks();
     const question = inputText.slice(4).trim().toLowerCase();
 
     // 🆕 Handle "continue" locally, not with GPT
-   if (/\b(continue|next|go on|keep going)\b/i.test(question)) {
+ if (/\b(continue|next|go on|keep going)\b/i.test(question)) {
+  await showNextChunk();   // show + speak chunk + footer
+  return; // ✅ don't call GPT at all
+}
 
-      showNextChunk();
-      if (currentChunkIndex <= taskChunks.length) {
-        await speakTextWithWebSpeech(taskChunks[currentChunkIndex - 1].join(". "));
-      }
-      return; // ✅ don't call GPT at all
-    }
+// Normal GPT query
+gptAnswer.textContent = "Thinking...";
+const answer = await askGpt(question);
 
-    // Normal GPT query
-    gptAnswer.textContent = "Thinking...";
-    const answer = await askGpt(question);
+// Split into chunks and display first chunk
+chunkTasksFromGPT(answer);
+await showNextChunk();   // show + speak chunk + footer
 
-    // Split into chunks and display first chunk
-    chunkTasksFromGPT(answer);
-    showNextChunk();
-
-    // Speak the actual first chunk
-    if (taskChunks.length > 0) {
-      await speakTextWithWebSpeech(taskChunks[0].join(". "));
-    }
-  } else {
-    // 📝 Task mode
-    addTask(inputText);
-  }
-};
 
 
 manualInput.addEventListener("keydown", (e) => {
@@ -966,22 +953,15 @@ if (moveMatch) {
   }
   handled = true;
 }          
+
 if (/\b(continue|next|go on|keep going)\b/i.test(lower)) {
-  showNextChunk();
-  if (currentChunkIndex <= taskChunks.length) {
-  await speakTextWithWebSpeech(taskChunks[currentChunkIndex - 1].join(". "));
-if (currentChunkIndex < taskChunks.length) {
-  await speakTextWithWebSpeech("Get ready for the next chunk. Do you want me to continue?");
-} else {
-  await speakTextWithWebSpeech("End of tasks.");
-}
-
-  }
-  await sleep(400); playBeep(); await sleep(250);
+  await showNextChunk();   // show + speak chunk + footer
+  await sleep(400); 
+  playBeep(); 
+  await sleep(250);
   handled = true;
-  continue;   // ✅ just skip GPT this round, stay in the loop
+  continue;   // ✅ skip GPT call
 }
-
 
 
           if (lower.startsWith("add ") || lower.startsWith("create ")) {
@@ -1366,7 +1346,7 @@ async function showNextChunk() {
     gptAnswer.innerHTML = formatted;
 
     const suffix = (currentChunkIndex < taskChunks.length - 1)
-      ? "Get ready for the next chunk. Do you want me to continue?"
+      ? "➡️ Get ready for the next chunk. Do you want me to continue?"
       : "✅ End of tasks.";
 
     gptAnswer.innerHTML += `<p style="margin-top:10px;">${suffix}</p>`;
@@ -1375,7 +1355,9 @@ async function showNextChunk() {
     // 🗣️ Speak both tasks and suffix
     const chunkText = chunk.join(". ");
     await speakTextWithWebSpeech(chunkText);
-    await speakTextWithWebSpeech(suffix);
+    await speakTextWithWebSpeech(
+      currentChunkIndex < taskChunks.length ? "Get ready for the next chunk. Do you want me to continue?" : "End of tasks."
+    );
   } else {
     gptAnswer.innerHTML = "<p>✅ All tasks shown.</p>";
     await speakTextWithWebSpeech("End of tasks.");
