@@ -965,10 +965,16 @@ if (moveMatch) {
   }
   handled = true;
 }          
-   if (/^(continue|next|go on|keep going)$/i.test(lower)) {
+if (/\b(continue|next|go on|keep going)\b/i.test(lower)) {
   showNextChunk();
   if (currentChunkIndex <= taskChunks.length) {
-    await speakTextWithWebSpeech(taskChunks[currentChunkIndex - 1].join(". "));
+  await speakTextWithWebSpeech(taskChunks[currentChunkIndex - 1].join(". "));
+if (currentChunkIndex < taskChunks.length) {
+  await speakTextWithWebSpeech("Get ready for the next chunk. Do you want me to continue?");
+} else {
+  await speakTextWithWebSpeech("End of tasks.");
+}
+
   }
   await sleep(400); playBeep(); await sleep(250);
   handled = true;
