@@ -629,7 +629,7 @@ loadTasks();
       // speakTextWithWebSpeech("Task added to " + normalizedCategory + " category.");
     }
 
- addManualBtn.onclick = async () => {
+addManualBtn.onclick = async () => {
   const inputText = manualInput.value.trim();
   manualInput.value = "";
 
@@ -639,19 +639,23 @@ loadTasks();
     const question = inputText.slice(4).trim().toLowerCase();
 
     // 🆕 Handle "continue" locally, not with GPT
- if (/\b(continue|next|go on|keep going)\b/i.test(question)) {
-  await showNextChunk();   // show + speak chunk + footer
-  return; // ✅ don't call GPT at all
-}
+    if (/\b(continue|next|go on|keep going)\b/i.test(question)) {
+      await showNextChunk();   // show + speak chunk + footer
+      return; // ✅ don't call GPT at all
+    }
 
-// Normal GPT query
-gptAnswer.textContent = "Thinking...";
-const answer = await askGpt(question);
+    // Normal GPT query
+    gptAnswer.textContent = "Thinking...";
+    const answer = await askGpt(question);
 
-// Split into chunks and display first chunk
-chunkTasksFromGPT(answer);
-await showNextChunk();   // show + speak chunk + footer
-
+    // Split into chunks and display first chunk
+    chunkTasksFromGPT(answer);
+    await showNextChunk();   // show + speak chunk + footer
+  } else {
+    // 📝 Task mode
+    addTask(inputText);
+  }
+};
 
 
 manualInput.addEventListener("keydown", (e) => {
