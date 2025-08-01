@@ -629,22 +629,33 @@ loadTasks();
       // speakTextWithWebSpeech("Task added to " + normalizedCategory + " category.");
     }
 
-   addManualBtn.onclick = async () => {
+ addManualBtn.onclick = async () => {
   const inputText = manualInput.value.trim();
   manualInput.value = "";
 
   if (!inputText) return;
 
   if (inputText.toLowerCase().startsWith("gpt ")) {
-    const question = inputText.slice(4).trim();
+    const question = inputText.slice(4).trim().toLowerCase();
+
+    // 🆕 Handle "continue" locally, not with GPT
+    if (/^(continue|next|go on|keep going)$/i.test(question)) {
+      showNextChunk();
+      if (currentChunkIndex <= taskChunks.length) {
+        await speakTextWithWebSpeech(taskChunks[currentChunkIndex - 1].join(". "));
+      }
+      return; // ✅ don't call GPT at all
+    }
+
+    // Normal GPT query
     gptAnswer.textContent = "Thinking...";
     const answer = await askGpt(question);
 
-    // 🆕 Split into chunks and display first chunk
+    // Split into chunks and display first chunk
     chunkTasksFromGPT(answer);
     showNextChunk();
 
-    // 🗣️ Speak the actual first chunk instead of placeholder
+    // Speak the actual first chunk
     if (taskChunks.length > 0) {
       await speakTextWithWebSpeech(taskChunks[0].join(". "));
     }
@@ -653,6 +664,7 @@ loadTasks();
     addTask(inputText);
   }
 };
+
 
 manualInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
@@ -953,15 +965,16 @@ if (moveMatch) {
   }
   handled = true;
 }          
-      if (/^(continue|next|go on|keep going)$/i.test(lower)) {
+     if (/^(continue|next|go on|keep going)$/i.test(lower)) {
   showNextChunk();
   if (currentChunkIndex <= taskChunks.length) {
     await speakTextWithWebSpeech(taskChunks[currentChunkIndex - 1].join(". "));
   }
   await sleep(400); playBeep(); await sleep(250);
   handled = true;
-  continue;
+  return;   // ✅ prevents falling through to GPT again
 }
+
 
 
           if (lower.startsWith("add ") || lower.startsWith("create ")) {
