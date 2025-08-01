@@ -1307,6 +1307,38 @@ Include the task number and category as they appear in the input.`;
   }
 }
 
+     // ====== CHUNKING HELPERS ======
+let taskChunks = [];
+let currentChunkIndex = 0;
+
+function chunkTasksFromGPT(rawText, chunkSize = 6) {
+  const lines = rawText.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  taskChunks = [];
+  for (let i = 0; i < lines.length; i += chunkSize) {
+    taskChunks.push(lines.slice(i, i + chunkSize));
+  }
+  currentChunkIndex = 0;
+}
+
+function showNextChunk() {
+  if (currentChunkIndex < taskChunks.length) {
+    const chunk = taskChunks[currentChunkIndex];
+  const formatted = "<ul>" + chunk.map(line => 
+  `<li>${line.replace(/\[(.*?)\]/, "<b>[$1]</b>")}</li>`
+).join('') + "</ul>";
+    gptAnswer.innerHTML = formatted;
+
+    const suffix = (currentChunkIndex < taskChunks.length - 1)
+      ? "➡️ Get ready for the next chunk. Say 'continue' to proceed."
+      : "✅ End of tasks.";
+
+    gptAnswer.innerHTML += `<p style="margin-top:10px;">${suffix}</p>`;
+    currentChunkIndex++;
+  } else {
+    gptAnswer.innerHTML = "<p>✅ All tasks shown.</p>";
+  }
+}
+
 
     // Platform-specific voice selection
 // Restore silence control settings from localStorage
