@@ -997,17 +997,15 @@ if (/\b(continue|next|go on|keep going)\b/i.test(lower)) {
 
         if (!handled) {
           try {
-           const gptResponse = await askGpt(toParse);
+      const gptResponse = await askGpt(toParse);
 gptLoading.style.display = "none";
 
 // Break filtered result into chunks
 chunkTasksFromGPT(gptResponse);
-showNextChunk();
 
-// Speak the actual first chunk instead of placeholder
-if (taskChunks.length > 0) {
-  await speakTextWithWebSpeech(taskChunks[0].join(". "));
-}
+// 🚀 This already handles both showing and speaking
+await showNextChunk();
+
 
 
             await sleep(400);
