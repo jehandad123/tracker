@@ -1341,7 +1341,7 @@ Do NOT summarize. Show every task on a new line.`;
       currentChunkIndex = 0;
 
       // Show first chunk
-      showChunk(lastChunks[currentChunkIndex]);
+      await showNextChunk();
       return answer;
     } else if (data.error) {
       answer = "API Error: " + data.error.message;
