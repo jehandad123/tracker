@@ -1337,7 +1337,7 @@ Do NOT summarize. Show every task on a new line.`;
       lastFilteredTasks = answer.split("\n").map(line => line.trim()).filter(l => l.length > 0);
 
       // Break into chunks
-      lastChunks = chunkTasks(lastFilteredTasks, 6);
+      chunkTasksFromGPT(lastFilteredTasks.join("\n"), 6);
       currentChunkIndex = 0;
 
       // Show first chunk
