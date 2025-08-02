@@ -1276,7 +1276,7 @@ async function askGpt(userQuestion) {
   if (/^(continue|yes|next|go on|more)$/i.test(userQuestion.trim()) && lastChunks.length > 0) {
     currentChunkIndex++;
     if (currentChunkIndex < lastChunks.length) {
-      showChunk(lastChunks[currentChunkIndex]);
+     await showNextChunk();
       return `Showing chunk ${currentChunkIndex + 1} of ${lastChunks.length}`;
     } else {
       gptAnswer.innerHTML = "<p>✅ End of tasks.</p>";
