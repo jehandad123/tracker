@@ -1171,7 +1171,9 @@ if (moveMatch) {
   handled = true;
 }          
 
-if (/\b(continue|next|go on|keep going)\b/i.test(lower)) {
+// Only treat short commands like "continue", "show next", etc. as pagination
+const isPureContinue = /^\s*(continue|go on|keep going|show next|next(?:\s*(?:one|chunk|page))?)\s*$/i.test(lower);
+if (isPureContinue) {
   await showNextChunk();   // show + speak chunk + footer
   await sleep(400); 
   playBeep(); 
@@ -1179,6 +1181,7 @@ if (/\b(continue|next|go on|keep going)\b/i.test(lower)) {
   handled = true;
   continue;   // ✅ skip GPT call
 }
+
 // Normalize "remind me to ..." into "add task ..."
 if (/^\s*remind me to\b/i.test(toParse)) {
   toParse = toParse.replace(/^\s*remind me to\b/i, "add task").trim();
