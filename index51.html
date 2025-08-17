@@ -421,6 +421,22 @@ function weekAnchorDate(baseDate = new Date(), policy = WEEK_ANCHOR_POLICY) {
     }
   })();
 </script>
+// —— CONFIG: where to pin "this week"/"next week" ——
+// Options for plain "this week"/"next week": "start" | "mid" | "end"
+const WEEK_ANCHOR_POLICY = localStorage.getItem("WEEK_ANCHOR_POLICY") || "end";
+
+// Which day counts as "mid-week"? 3 = Wednesday (start + 3)
+const WEEK_MID_OFFSET = 3;
+
+// Returns the anchor date for the given week based on the policy.
+function weekAnchorDate(baseDate = new Date(), policy = WEEK_ANCHOR_POLICY) {
+  const s = startOfWeek(baseDate); // Sunday-based in your app
+  if (policy === "start") return s;
+  if (policy === "mid")   return addDays(s, WEEK_MID_OFFSET);
+  // "end" — align to your End Of Week policy (Fri/Sat/Sun)
+  const endIdx = (EOW_POLICY === "friday") ? 5 : (EOW_POLICY === "saturday" ? 6 : 6);
+  return addDays(s, endIdx);
+}
 
   <button id="exportTasksBtn">Export Tasks (Backup)</button>
   <button id="importTasksBtn">Import Tasks</button>
