@@ -621,6 +621,26 @@ function normalizeTaskTextAndDate(rawText) {
   let text = (rawText || "").trim();
 
   // Special fuzzy phrases first
+// BEGINNING/START OF THIS WEEK
+if (/\b(?:beginning|start)(?:\s+of)?\s+(?:this|current)\s+week\b/i.test(text)) {
+  const dt = startOfWeek(new Date());
+  dt.setHours(0,0,0,0);
+  const iso = dt.toISOString();
+  const label = formatDateLabel(dt);
+  text = text.replace(/\b(?:beginning|start)(?:\s+of)?\s+(?:this|current)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  return { cleanText: text, dateISO: iso };
+}
+
+// BEGINNING/START OF NEXT WEEK
+if (/\b(?:beginning|start)(?:\s+of)?\s+(?:next|upcoming|coming)\s+week\b/i.test(text)) {
+  const dt = startOfWeek(addDays(new Date(), 7));
+  dt.setHours(0,0,0,0);
+  const iso = dt.toISOString();
+  const label = formatDateLabel(dt);
+  text = text.replace(/\b(?:beginning|start)(?:\s+of)?\s+(?:next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  return { cleanText: text, dateISO: iso };
+}
+
   // --- THIS WEEK (early/mid/late and plain) ---
 if (/\bearly\s+(this|current)\s+week\b/i.test(text)) {
   const dt = startOfWeek(new Date());          // start
@@ -1397,37 +1417,45 @@ if (/^\s*remind me to\b/i.test(toParse)) {
 }
 
 
-        if (lower.startsWith("add ") || lower.startsWith("create ")) {
-  // Strip the verb ("add"/"create" and optional "task") and route locally
-  const rawTask = toParse.replace(/^\s*(add|create)\s+(task\s*)?/i, "").trim();
+if (/\b(add|create)\b/i.test(lower)) {
+  // Normalize to start at the first "add"/"create"
+  let rawTask = toParse.replace(/^[\s\S]*?\b(add|create)\b\s+(task\s*)?/i, "").trim();
 
-  // We require category as the last word (your addTask expects this).
-  // Example you should say: "meet friends end of next week Work"
-  const lastWord = rawTask.split(/\s+/).pop().replace(/[.,!?;:]+$/, "");
-  const valid = extractValidCategory(lastWord);
+  // 1) Try category as LAST word
+  let lastWord = rawTask.split(/\s+/).pop().replace(/[.,!?;:]+$/, "");
+  let valid = extractValidCategory(lastWord);
+
+  // 2) If not found, try to FIND a category ANYWHERE and move it to the end
   if (!valid) {
-    gptLoading.style.display = "none";
-    await speakTextWithWebSpeech(
-      "Please end your task with a category: Home, Shop, Work, or Manager."
-    );
-    await sleep(400);
-    playBeep();
-    await sleep(250);
-    continue; // wait for a clearer re-utterance
+    for (const cat of categories) {
+      const rx = new RegExp(`\\b${cat}\\b`, "i");
+      if (rx.test(rawTask)) {
+        valid = cat;
+        rawTask = rawTask.replace(rx, "").trim() + " " + cat; // move to end
+        break;
+      }
+    }
   }
 
-  // Add the task locally (this uses your existing date parsing/normalization)
+  if (!valid) {
+    // 3) Still no category → do NOT query; prompt for one and listen again
+    gptLoading.style.display = "none";
+    await speakTextWithWebSpeech("Please add a category at the end: Home, Shop, Work, or Manager.");
+    await sleep(400); playBeep(); await sleep(250);
+    continue; // never call askGpt if user intent was 'add'
+  }
+
+  // Add locally (uses your date normalization incl. week anchors)
   addTask(rawTask);
   gptLoading.style.display = "none";
 
   await speakTextWithWebSpeech(`Task added to ${valid} category.`);
-  await sleep(400);
-  playBeep();
-  await sleep(250);
+  await sleep(400); playBeep(); await sleep(250);
 
   handled = true;
   continue; // ✅ skip GPT call
 }
+
 
         } catch (e) {
           gptLoading.style.display = "none";
