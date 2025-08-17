@@ -636,7 +636,7 @@ if (results && results.length > 0) {
   return { cleanText: cleaned, dateISO: iso };
 }
 return { cleanText: text, dateISO: null };
-
+}
 
 // Parse the user's question for a target date or range.
 // Returns {type:"single", ymd:"YYYY-MM-DD"} or {type:"range", startYmd, endYmd} or null
@@ -1153,7 +1153,7 @@ if (userInput && userInput.trim().length > 0) {
 
         let handled = false;
         try {
-          const lower = toParse.trim().toLowerCase();
+         let lower = toParse.trim().toLowerCase();
   // Voice command: "delete task 3 in Manager", "delete task 2 from Home", or "delete task 1 Manager"
   const deleteMatch = toParse.match(/(?:delete|remove)\s+task\s+(\d+)(?:\s+(?:in|from)\s+|\s+)([\w\s]+)/i);
   if (deleteMatch) {
