@@ -621,57 +621,39 @@ function normalizeTaskTextAndDate(rawText) {
   let text = (rawText || "").trim();
 
   // Special fuzzy phrases first
-// BEGINNING/START OF THIS WEEK
-if (/\b(?:beginning|start)(?:\s+of)?\s+(?:this|current)\s+week\b/i.test(text)) {
-  const dt = startOfWeek(new Date());
+// --- THIS WEEK (beginning/start/early) ---
+if (/\b(?:early|beginning|start)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/i.test(text)) {
+  const dt = startOfWeek(new Date()); // week start
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
-  text = text.replace(/\b(?:beginning|start)(?:\s+of)?\s+(?:this|current)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  text = text.replace(/\b(?:early|beginning|start)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
   return { cleanText: text, dateISO: iso };
 }
 
-// BEGINNING/START OF NEXT WEEK
-if (/\b(?:beginning|start)(?:\s+of)?\s+(?:next|upcoming|coming)\s+week\b/i.test(text)) {
-  const dt = startOfWeek(addDays(new Date(), 7));
+// --- THIS WEEK (mid/middle) ---
+if (/\b(?:mid(?:dle)?|middle)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/i.test(text)) {
+  const dt = addDays(startOfWeek(new Date()), WEEK_MID_OFFSET); // mid-week
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
-  text = text.replace(/\b(?:beginning|start)(?:\s+of)?\s+(?:next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  text = text.replace(/\b(?:mid(?:dle)?|middle)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
   return { cleanText: text, dateISO: iso };
 }
 
-  // --- THIS WEEK (early/mid/late and plain) ---
-if (/\bearly\s+(this|current)\s+week\b/i.test(text)) {
-  const dt = startOfWeek(new Date());          // start
+// --- THIS WEEK (end/late) ---
+if (/\b(?:end|late)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/i.test(text)) {
+  const dt = weekAnchorDate(new Date(), "end"); // end of week (Fri/Sat/Sun per EOW_POLICY)
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
-  text = text.replace(/\bearly\s+(this|current)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  text = text.replace(/\b(?:end|late)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
   return { cleanText: text, dateISO: iso };
 }
 
-if (/\bmid(?:dle)?\s+(this|current)\s+week\b/i.test(text)) {
-  const dt = addDays(startOfWeek(new Date()), 3); // Wednesday
-  dt.setHours(0,0,0,0);
-  const iso = dt.toISOString();
-  const label = formatDateLabel(dt);
-  text = text.replace(/\bmid(?:dle)?\s+(this|current)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
-  return { cleanText: text, dateISO: iso };
-}
-
-if (/\blate\s+(this|current)\s+week\b/i.test(text)) {
-  const dt = weekAnchorDate(new Date(), "end"); // end of week
-  dt.setHours(0,0,0,0);
-  const iso = dt.toISOString();
-  const label = formatDateLabel(dt);
-  text = text.replace(/\blate\s+(this|current)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
-  return { cleanText: text, dateISO: iso };
-}
-
-// Plain "this week" uses your policy (start/mid/end)
+// --- PLAIN "THIS WEEK" (falls back to your Week Anchor policy) ---
 if (/\b(this\s+week|current\s+week)\b/i.test(text)) {
-  const dt = weekAnchorDate(new Date());       // uses WEEK_ANCHOR_POLICY
+  const dt = weekAnchorDate(new Date()); // start/mid/end per dropdown
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
@@ -679,37 +661,39 @@ if (/\b(this\s+week|current\s+week)\b/i.test(text)) {
   return { cleanText: text, dateISO: iso };
 }
 
-// --- NEXT WEEK (early/mid/late and plain) ---
-if (/\bearly\s+(next|upcoming|coming)\s+week\b/i.test(text)) {
+// --- NEXT WEEK (beginning/start/early) ---
+if (/\b(?:early|beginning|start)(?:\s+of(?:\s+the)?)?\s+(?:next|upcoming|coming)\s+week\b/i.test(text)) {
   const dt = startOfWeek(addDays(new Date(), 7)); // start of next week
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
-  text = text.replace(/\bearly\s+(next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  text = text.replace(/\b(?:early|beginning|start)(?:\s+of(?:\s+the)?)?\s+(?:next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
   return { cleanText: text, dateISO: iso };
 }
 
-if (/\bmid(?:dle)?\s+(next|upcoming|coming)\s+week\b/i.test(text)) {
-  const dt = addDays(startOfWeek(addDays(new Date(), 7)), 3); // next Wed
+// --- NEXT WEEK (mid/middle) ---
+if (/\b(?:mid(?:dle)?|middle)(?:\s+of(?:\s+the)?)?\s+(?:next|upcoming|coming)\s+week\b/i.test(text)) {
+  const dt = addDays(startOfWeek(addDays(new Date(), 7)), WEEK_MID_OFFSET); // next mid-week
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
-  text = text.replace(/\bmid(?:dle)?\s+(next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  text = text.replace(/\b(?:mid(?:dle)?|middle)(?:\s+of(?:\s+the)?)?\s+(?:next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
   return { cleanText: text, dateISO: iso };
 }
 
-if (/\blate\s+(next|upcoming|coming)\s+week\b/i.test(text)) {
+// --- NEXT WEEK (end/late) ---
+if (/\b(?:end|late)(?:\s+of(?:\s+the)?)?\s+(?:next|upcoming|coming)\s+week\b/i.test(text)) {
   const dt = weekAnchorDate(addDays(new Date(), 7), "end"); // end of next week
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
-  text = text.replace(/\blate\s+(next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  text = text.replace(/\b(?:end|late)(?:\s+of(?:\s+the)?)?\s+(?:next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
   return { cleanText: text, dateISO: iso };
 }
 
-// Plain "next week" uses your policy (start/mid/end)
+// --- PLAIN "NEXT WEEK" (falls back to your Week Anchor policy) ---
 if (/\b(next|upcoming|coming)\s+week\b/i.test(text)) {
-  const dt = weekAnchorDate(addDays(new Date(), 7)); // uses WEEK_ANCHOR_POLICY
+  const dt = weekAnchorDate(addDays(new Date(), 7)); // start/mid/end per dropdown
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
@@ -717,43 +701,6 @@ if (/\b(next|upcoming|coming)\s+week\b/i.test(text)) {
   return { cleanText: text, dateISO: iso };
 }
 
-if (/\b(end of (the )?week|eow)\b/i.test(text) && !/\bnext\b/i.test(text)) {
-  const dt = endOfThisWeek();
-  dt.setHours(0,0,0,0);
-  const iso = dt.toISOString();
-  const label = formatDateLabel(dt);
-  text = text.replace(/\b(end of (the )?week|eow)\b/ig, label).replace(/\s{2,}/g, " ").trim();
-  return { cleanText: text, dateISO: iso };
-}
-
-if (/\b(end of next week|eonw)\b/i.test(text)) {
-  const dt = endOfNextWeek();
-  dt.setHours(0,0,0,0);
-  const iso = dt.toISOString();
-  const label = formatDateLabel(dt);
-  text = text.replace(/\b(end of next week|eonw)\b/ig, label).replace(/\s{2,}/g, " ").trim();
-  return { cleanText: text, dateISO: iso };
-}
-
-if (/\b(this weekend)\b/i.test(text)) {
-  const end = endOfThisWeek();
-  const dt = (EOW_POLICY === "friday") ? addDays(end, 1) : end; // Friday policy → Saturday
-  dt.setHours(0,0,0,0);
-  const iso = dt.toISOString();
-  const label = formatDateLabel(dt);
-  text = text.replace(/\b(this weekend)\b/ig, label).replace(/\s{2,}/g, " ").trim();
-  return { cleanText: text, dateISO: iso };
-}
-
-if (/\b(next weekend)\b/i.test(text)) {
-  const endNext = endOfNextWeek();
-  const dt = (EOW_POLICY === "friday") ? addDays(endNext, 1) : endNext;
-  dt.setHours(0,0,0,0);
-  const iso = dt.toISOString();
-  const label = formatDateLabel(dt);
-  text = text.replace(/\b(next weekend)\b/ig, label).replace(/\s{2,}/g, " ").trim();
-  return { cleanText: text, dateISO: iso };
-}
 
 // Fallback to chrono for everything else (tomorrow, explicit dates, etc.)
 const results = chrono.parse(text, new Date());
