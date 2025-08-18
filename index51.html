@@ -421,22 +421,44 @@ function weekAnchorDate(baseDate = new Date(), policy = WEEK_ANCHOR_POLICY) {
     }
   })();
 </script>
-// —— CONFIG: where to pin "this week"/"next week" ——
-// Options for plain "this week"/"next week": "start" | "mid" | "end"
-const WEEK_ANCHOR_POLICY = localStorage.getItem("WEEK_ANCHOR_POLICY") || "end";
-
-// Which day counts as "mid-week"? 3 = Wednesday (start + 3)
-const WEEK_MID_OFFSET = 3;
-
-// Returns the anchor date for the given week based on the policy.
-function weekAnchorDate(baseDate = new Date(), policy = WEEK_ANCHOR_POLICY) {
-  const s = startOfWeek(baseDate); // Sunday-based in your app
-  if (policy === "start") return s;
-  if (policy === "mid")   return addDays(s, WEEK_MID_OFFSET);
-  // "end" — align to your End Of Week policy (Fri/Sat/Sun)
-  const endIdx = (EOW_POLICY === "friday") ? 5 : (EOW_POLICY === "saturday" ? 6 : 6);
-  return addDays(s, endIdx);
-}
+<div style="margin-top:10px;">
+  <label>
+    Week Anchor =
+    <select id="weekAnchorPolicy">
+      <option value="start">Start of week</option>
+      <option value="mid">Mid-week (Wed)</option>
+      <option value="end" selected>End of week</option>
+    </select>
+  </label>
+</div>
+<script>
+  (function(){
+    const sel = document.getElementById('weekAnchorPolicy');
+    if (sel) {
+      sel.value = localStorage.getItem('WEEK_ANCHOR_POLICY') || 'end';
+      sel.onchange = () => localStorage.setItem('WEEK_ANCHOR_POLICY', sel.value);
+    }
+  })();
+</script>
+<div style="margin-top:6px;">
+  <label>
+    Mid-week day =
+    <select id="weekMidOffset">
+      <option value="2">Tuesday</option>
+      <option value="3" selected>Wednesday</option>
+      <option value="4">Thursday</option>
+    </select>
+  </label>
+</div>
+<script>
+  (function(){
+    const sel = document.getElementById('weekMidOffset');
+    if (sel) {
+      sel.value = localStorage.getItem('WEEK_MID_OFFSET') || '3';
+      sel.onchange = () => localStorage.setItem('WEEK_MID_OFFSET', sel.value);
+    }
+  })();
+</script>
 
   <button id="exportTasksBtn">Export Tasks (Backup)</button>
   <button id="importTasksBtn">Import Tasks</button>
@@ -602,6 +624,23 @@ function formatDateLabel(d) {
 // —— CONFIG: what is "end of the week"? ——
 // Options: "friday", "saturday", "sunday"
 const EOW_POLICY = localStorage.getItem("EOW_POLICY") || "sunday";
+// —— CONFIG: anchor for "this/next week" ——
+// When the user just says "this week" or "next week", which day should we pin?
+// Choose "start" | "mid" | "end" (stored in localStorage so you can change later).
+const WEEK_ANCHOR_POLICY = localStorage.getItem("WEEK_ANCHOR_POLICY") || "end";
+
+// What counts as "mid-week"? Default Wednesday = start + 3
+const WEEK_MID_OFFSET = Number(localStorage.getItem("WEEK_MID_OFFSET") || 3);
+
+// Given a week, return the anchor date based on policy
+function weekAnchorDate(baseDate = new Date(), policy = WEEK_ANCHOR_POLICY) {
+  const s = startOfWeek(baseDate); // your app's week start (Sunday)
+  if (policy === "start") return s;
+  if (policy === "mid")   return addDays(s, WEEK_MID_OFFSET);
+  // "end" — align to your End-of-Week policy (Fri/Sat/Sun)
+  const endIdx = (EOW_POLICY === "friday") ? 5 : (EOW_POLICY === "saturday" ? 6 : 6);
+  return addDays(s, endIdx);
+}
 
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 function startOfWeek(d) {
@@ -639,7 +678,7 @@ function normalizeTaskTextAndDate(rawText) {
   // Special fuzzy phrases first
 // --- THIS WEEK (beginning/start/early) ---
 if (/\b(?:early|beginning|start)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/i.test(text)) {
-  const dt = startOfWeek(new Date()); // week start
+  const dt = startOfWeek(new Date()); // start of this week
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
@@ -649,7 +688,7 @@ if (/\b(?:early|beginning|start)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\
 
 // --- THIS WEEK (mid/middle) ---
 if (/\b(?:mid(?:dle)?|middle)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/i.test(text)) {
-  const dt = addDays(startOfWeek(new Date()), WEEK_MID_OFFSET); // mid-week
+  const dt = addDays(startOfWeek(new Date()), WEEK_MID_OFFSET); // default Wed
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
@@ -659,7 +698,7 @@ if (/\b(?:mid(?:dle)?|middle)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/i
 
 // --- THIS WEEK (end/late) ---
 if (/\b(?:end|late)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/i.test(text)) {
-  const dt = weekAnchorDate(new Date(), "end"); // end of week (Fri/Sat/Sun per EOW_POLICY)
+  const dt = weekAnchorDate(new Date(), "end"); // end of this week per EOW_POLICY
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
@@ -667,13 +706,13 @@ if (/\b(?:end|late)(?:\s+of(?:\s+the)?)?\s+(?:this|current)\s+week\b/i.test(text
   return { cleanText: text, dateISO: iso };
 }
 
-// --- PLAIN "THIS WEEK" (falls back to your Week Anchor policy) ---
-if (/\b(this\s+week|current\s+week)\b/i.test(text)) {
-  const dt = weekAnchorDate(new Date()); // start/mid/end per dropdown
+// --- PLAIN "THIS WEEK" (uses your Week Anchor setting: start/mid/end) ---
+if (/\b(?:this|current)\s+week\b/i.test(text)) {
+  const dt = weekAnchorDate(new Date());
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
-  text = text.replace(/\b(this\s+week|current\s+week)\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  text = text.replace(/\b(?:this|current)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
   return { cleanText: text, dateISO: iso };
 }
 
@@ -707,16 +746,15 @@ if (/\b(?:end|late)(?:\s+of(?:\s+the)?)?\s+(?:next|upcoming|coming)\s+week\b/i.t
   return { cleanText: text, dateISO: iso };
 }
 
-// --- PLAIN "NEXT WEEK" (falls back to your Week Anchor policy) ---
-if (/\b(next|upcoming|coming)\s+week\b/i.test(text)) {
-  const dt = weekAnchorDate(addDays(new Date(), 7)); // start/mid/end per dropdown
+// --- PLAIN "NEXT WEEK" (uses Week Anchor setting) ---
+if (/\b(?:next|upcoming|coming)\s+week\b/i.test(text)) {
+  const dt = weekAnchorDate(addDays(new Date(), 7));
   dt.setHours(0,0,0,0);
   const iso = dt.toISOString();
   const label = formatDateLabel(dt);
-  text = text.replace(/\b(next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
+  text = text.replace(/\b(?:next|upcoming|coming)\s+week\b/ig, label).replace(/\s{2,}/g, " ").trim();
   return { cleanText: text, dateISO: iso };
 }
-
 
 // Fallback to chrono for everything else (tomorrow, explicit dates, etc.)
 const results = chrono.parse(text, new Date());
@@ -1380,45 +1418,37 @@ if (/^\s*remind me to\b/i.test(toParse)) {
 }
 
 
-if (/\b(add|create)\b/i.test(lower)) {
-  // Normalize to start at the first "add"/"create"
-  let rawTask = toParse.replace(/^[\s\S]*?\b(add|create)\b\s+(task\s*)?/i, "").trim();
+        if (lower.startsWith("add ") || lower.startsWith("create ")) {
+  // Strip the verb ("add"/"create" and optional "task") and route locally
+  const rawTask = toParse.replace(/^\s*(add|create)\s+(task\s*)?/i, "").trim();
 
-  // 1) Try category as LAST word
-  let lastWord = rawTask.split(/\s+/).pop().replace(/[.,!?;:]+$/, "");
-  let valid = extractValidCategory(lastWord);
-
-  // 2) If not found, try to FIND a category ANYWHERE and move it to the end
+  // We require category as the last word (your addTask expects this).
+  // Example you should say: "meet friends end of next week Work"
+  const lastWord = rawTask.split(/\s+/).pop().replace(/[.,!?;:]+$/, "");
+  const valid = extractValidCategory(lastWord);
   if (!valid) {
-    for (const cat of categories) {
-      const rx = new RegExp(`\\b${cat}\\b`, "i");
-      if (rx.test(rawTask)) {
-        valid = cat;
-        rawTask = rawTask.replace(rx, "").trim() + " " + cat; // move to end
-        break;
-      }
-    }
-  }
-
-  if (!valid) {
-    // 3) Still no category → do NOT query; prompt for one and listen again
     gptLoading.style.display = "none";
-    await speakTextWithWebSpeech("Please add a category at the end: Home, Shop, Work, or Manager.");
-    await sleep(400); playBeep(); await sleep(250);
-    continue; // never call askGpt if user intent was 'add'
+    await speakTextWithWebSpeech(
+      "Please end your task with a category: Home, Shop, Work, or Manager."
+    );
+    await sleep(400);
+    playBeep();
+    await sleep(250);
+    continue; // wait for a clearer re-utterance
   }
 
-  // Add locally (uses your date normalization incl. week anchors)
+  // Add the task locally (this uses your existing date parsing/normalization)
   addTask(rawTask);
   gptLoading.style.display = "none";
 
   await speakTextWithWebSpeech(`Task added to ${valid} category.`);
-  await sleep(400); playBeep(); await sleep(250);
+  await sleep(400);
+  playBeep();
+  await sleep(250);
 
   handled = true;
   continue; // ✅ skip GPT call
 }
-
 
         } catch (e) {
           gptLoading.style.display = "none";
