@@ -421,25 +421,8 @@ function weekAnchorDate(baseDate = new Date(), policy = WEEK_ANCHOR_POLICY) {
     }
   })();
 </script>
-<div style="margin-top:10px;">
-  <label>
-    Week Anchor =
-    <select id="weekAnchorPolicy">
-      <option value="start">Start of week</option>
-      <option value="mid">Mid-week (Wed)</option>
-      <option value="end" selected>End of week</option>
-    </select>
-  </label>
-</div>
-<script>
-  (function(){
-    const sel = document.getElementById('weekAnchorPolicy');
-    if (sel) {
-      sel.value = localStorage.getItem('WEEK_ANCHOR_POLICY') || 'end';
-      sel.onchange = () => localStorage.setItem('WEEK_ANCHOR_POLICY', sel.value);
-    }
-  })();
-</script>
+
+
 <div style="margin-top:6px;">
   <label>
     Mid-week day =
@@ -626,8 +609,6 @@ function formatDateLabel(d) {
 const EOW_POLICY = localStorage.getItem("EOW_POLICY") || "sunday";
 // —— CONFIG: anchor for "this/next week" ——
 // When the user just says "this week" or "next week", which day should we pin?
-// Choose "start" | "mid" | "end" (stored in localStorage so you can change later).
-const WEEK_ANCHOR_POLICY = localStorage.getItem("WEEK_ANCHOR_POLICY") || "end";
 
 // What counts as "mid-week"? Default Wednesday = start + 3
 const WEEK_MID_OFFSET = Number(localStorage.getItem("WEEK_MID_OFFSET") || 3);
