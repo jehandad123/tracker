@@ -578,18 +578,24 @@ const REQUIRED_ACTIVE_FRAMES = 5; // ✅ How many frames need to be "loud" to tr
       return input.trim();
     }
 
-    function extractValidCategory(raw) {
-      if (!raw) return null;
-      let normalized = raw.toLowerCase();
-      normalized = normalized.replace(/[\.\,\!\?\;\:]+/g, '');
-      normalized = normalized.replace(/\b(category|list|task|under|the|a|an|in|to|for|on|of|as|at|with|by|from|into|onto|and|or|add|new|my)\b/g, '').trim();
-      normalized = normalized.replace(/\s{2,}/g, ' ').trim();
-      for (const cat of categories) {
-        if (normalized === cat.toLowerCase()) return cat;
-        if (normalized.includes(cat.toLowerCase())) return cat;
-      }
-      return null;
-    }
+ function extractValidCategory(raw) {
+  if (!raw) return null;
+
+  // Lowercase + drop everything except letters
+  let normalized = String(raw).toLowerCase().replace(/[^a-z]/g, "");
+
+  // Exact match first
+  for (const cat of categories) {
+    if (normalized === cat.toLowerCase()) return cat;
+  }
+
+  // Last resort: if token still contains the category word (rare but helpful)
+  for (const cat of categories) {
+    if (normalized.includes(cat.toLowerCase())) return cat;
+  }
+  return null;
+}
+
 
     function preprocessInput(input) {
       return input.replace(/[\.\,\!\?\;\:]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -963,8 +969,10 @@ if (/\b(next|upcoming)\s+month\b/.test(q)) {
     function addTask(inputText) {
       const cleaned = preprocessInput(inputText);
       const words = cleaned.trim().split(" ");
-      let lastWord = words[words.length - 1];
-      lastWord = lastWord.replace(/[.,!?;:]+$/, "");
+     let lastWord = words[words.length - 1] || "";
+// Strip any trailing non-letters (smart quotes, emoji, punctuation, etc.)
+lastWord = lastWord.replace(/[^a-zA-Z]+$/g, "");
+
       const category = extractValidCategory(lastWord);
       if (!category) {
         alert("Category not found at the end of the task. Please end your task with one of: " + categories.join(", "));
@@ -1399,37 +1407,46 @@ if (/^\s*remind me to\b/i.test(toParse)) {
 }
 
 
-        if (lower.startsWith("add ") || lower.startsWith("create ")) {
-  // Strip the verb ("add"/"create" and optional "task") and route locally
-  const rawTask = toParse.replace(/^\s*(add|create)\s+(task\s*)?/i, "").trim();
+if (lower.startsWith("add ") || lower.startsWith("create ")) {
+  // Strip verb + optional "a" + optional "task"
+  let rawTask = toParse.replace(/^\s*(add|create)\s+(?:a\s+)?(?:task\s*)?/i, "").trim();
 
-  // We require category as the last word (your addTask expects this).
-  // Example you should say: "meet friends end of next week Work"
-  const lastWord = rawTask.split(/\s+/).pop().replace(/[.,!?;:]+$/, "");
-  const valid = extractValidCategory(lastWord);
+  // 1) Try last token (aggressively sanitized)
+  const tokens = rawTask.split(/\s+/);
+  let lastToken = tokens[tokens.length - 1] || "";
+  let cleanedLast = lastToken.toLowerCase().replace(/[^a-z]/g, "");
+  let valid = extractValidCategory(cleanedLast);
+
+  // 2) If not found, scan ANYWHERE in the phrase
   if (!valid) {
-    gptLoading.style.display = "none";
-    await speakTextWithWebSpeech(
-      "Please end your task with a category: Home, Shop, Work, or Manager."
-    );
-    await sleep(400);
-    playBeep();
-    await sleep(250);
-    continue; // wait for a clearer re-utterance
+    for (const cat of categories) {
+      const rx = new RegExp(`\\b${cat}\\b`, "i");
+      if (rx.test(rawTask)) { valid = cat; break; }
+    }
   }
 
-  // Add the task locally (this uses your existing date parsing/normalization)
+  if (!valid) {
+    gptLoading.style.display = "none";
+    await speakTextWithWebSpeech("Please add a category: Home, Shop, Work, or Manager.");
+    await sleep(400); playBeep(); await sleep(250);
+    continue;
+  }
+
+  // 3) Ensure category is exactly once at the END (so addTask() will pass)
+  rawTask = rawTask.replace(new RegExp(`\\b${valid}\\b`, "ig"), "").trim();
+  rawTask = (rawTask + " " + valid).replace(/\s{2,}/g, " ").trim();
+
+  // Add locally (uses your date normalization, "mid/end/start of week", etc.)
   addTask(rawTask);
   gptLoading.style.display = "none";
 
   await speakTextWithWebSpeech(`Task added to ${valid} category.`);
-  await sleep(400);
-  playBeep();
-  await sleep(250);
+  await sleep(400); playBeep(); await sleep(250);
 
   handled = true;
   continue; // ✅ skip GPT call
 }
+
 
         } catch (e) {
           gptLoading.style.display = "none";
